@@ -39,12 +39,6 @@ android {
     }
 }
 
-repositories {
-    google()
-    mavenCentral()
-    maven { url = uri("https://jitpack.io") }
-}
-
 dependencies {
     // Core
     implementation("androidx.core:core-ktx:1.12.0")
@@ -65,7 +59,7 @@ dependencies {
     // DrawerLayout
     implementation("androidx.drawerlayout:drawerlayout:1.2.0")
     
-    // MPAndroidChart para gráficas de ráfagas (desde JitPack)
+    // MPAndroidChart para gráficas de ráfagas
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
     
     // CameraX para Realidad Aumentada
