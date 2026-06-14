@@ -52,7 +52,7 @@
         <!-- Servicio de monitoreo en primer plano -->
         <service
             android:name=".service.NetworkMonitorService"
-            android:foregroundServiceType="location|phoneState"
+            android:foregroundServiceType="location|phoneCall"
             android:exported="false" />
             
     </application>
