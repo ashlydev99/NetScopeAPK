@@ -22,8 +22,6 @@ import cu.netscope.pro.MainActivity
 import cu.netscope.pro.R
 import cu.netscope.pro.data.model.CellInfo
 import cu.netscope.pro.data.model.NetworkState
-import cu.netscope.pro.util.DistanceCalculator
-import cu.netscope.pro.util.SpectralEfficiencyCalculator
 import java.util.concurrent.atomic.AtomicReference
 
 class NetworkMonitorService : LifecycleService() {
@@ -73,7 +71,6 @@ class NetworkMonitorService : LifecycleService() {
         setupTelephonyMonitoring()
         startSpeedMonitoring()
         startForeground(NOTIFICATION_ID, buildNotification("Iniciando..."))
-        // Forzar primera actualización
         monitorHandler?.postDelayed({ updateNetworkState() }, 500)
     }
 
@@ -132,19 +129,15 @@ class NetworkMonitorService : LifecycleService() {
     @Suppress("DEPRECATION")
     private fun setupTelephonyMonitoring() {
         telephonyManager = getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
-        Log.d(TAG, "TelephonyManager inicializado")
 
         phoneStateListener = object : PhoneStateListener() {
             override fun onSignalStrengthsChanged(signalStrength: SignalStrength) {
-                Log.d(TAG, "onSignalStrengthsChanged")
                 updateNetworkState()
             }
             override fun onCellInfoChanged(cellInfo: MutableList<android.telephony.CellInfo>) {
-                Log.d(TAG, "onCellInfoChanged: ${cellInfo.size} celdas")
                 updateNetworkState()
             }
             override fun onDisplayInfoChanged(telephonyDisplayInfo: TelephonyDisplayInfo) {
-                Log.d(TAG, "onDisplayInfoChanged")
                 updateNetworkState()
             }
         }
@@ -157,9 +150,6 @@ class NetworkMonitorService : LifecycleService() {
                 PhoneStateListener.LISTEN_CELL_INFO or
                 PhoneStateListener.LISTEN_DISPLAY_INFO_CHANGED
             )
-            Log.d(TAG, "PhoneStateListener registrado")
-        } else {
-            Log.e(TAG, "Permiso READ_PHONE_STATE no concedido")
         }
     }
 
@@ -214,15 +204,9 @@ class NetworkMonitorService : LifecycleService() {
         Log.d(TAG, "updateNetworkState llamado")
         
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-            != PackageManager.PERMISSION_GRANTED) {
-            Log.e(TAG, "Permiso ACCESS_FINE_LOCATION no concedido")
-            return
-        }
+            != PackageManager.PERMISSION_GRANTED) return
 
-        val tm = telephonyManager ?: run {
-            Log.e(TAG, "TelephonyManager es null")
-            return
-        }
+        val tm = telephonyManager ?: return
         
         val state = NetworkState()
         state.networkType = getNetworkTypeString(tm.dataNetworkType)
@@ -231,26 +215,17 @@ class NetworkMonitorService : LifecycleService() {
         state.mccMnc = tm.networkOperator ?: ""
         state.isRoaming = tm.isNetworkRoaming
 
-        Log.d(TAG, "Operador: ${state.operatorName}, Red: ${state.networkType}, Gen: ${state.networkGeneration}")
-
         val allCells = tm.allCellInfo
         if (allCells != null && allCells.isNotEmpty()) {
-            Log.d(TAG, "Celdas detectadas: ${allCells.size}")
-            state.cells = allCells.mapNotNull { cellInfo ->
-                parseCellInfo(cellInfo)
-            }
+            state.cells = allCells.mapNotNull { parseCellInfo(it) }
             val primaryCell = allCells.firstOrNull { it.isRegistered }
             if (primaryCell != null) {
                 state.primaryCell = parseCellInfo(primaryCell)
-                Log.d(TAG, "Celda primaria: ${state.primaryCell?.type} dBm=${state.primaryCell?.dbm}")
             }
-        } else {
-            Log.w(TAG, "No se detectaron celdas")
         }
 
         currentNetworkState.set(state)
         networkStateListener?.invoke(state)
-        Log.d(TAG, "Estado actualizado y notificado")
     }
 
     private fun parseCellInfo(cellInfo: android.telephony.CellInfo): CellInfo {
