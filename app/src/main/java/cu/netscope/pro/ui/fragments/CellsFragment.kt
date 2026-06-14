@@ -57,12 +57,12 @@ class CellsFragment : Fragment() {
     private fun updateUI(state: NetworkState) {
         binding.textOperatorName.text = state.operatorName ?: "Buscando..."
         binding.textNetworkGen.text = state.networkGeneration ?: "?"
-        binding.textNetworkType.text = state.networkType ?: "..."
+        binding.textNetworkType.text = state.networkType ?: "?"
 
-        // Usar primaryCell directamente (como en la versión que funciona)
         val primaryCell = state.primaryCell
+        val cellDbm = primaryCell?.dbm
         
-        if (primaryCell != null && primaryCell.dbm != null && primaryCell.dbm < 0) {
+        if (primaryCell != null && cellDbm != null && cellDbm < 0) {
             binding.textPrimaryDbm.text = "${primaryCell.dbm} dBm"
             binding.textPrimaryBand.text = primaryCell.band ?: "?"
             
