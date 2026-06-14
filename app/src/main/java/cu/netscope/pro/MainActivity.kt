@@ -13,12 +13,9 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import cu.netscope.pro.databinding.ActivityMainBinding
 import cu.netscope.pro.service.NetworkMonitorService
-import cu.netscope.pro.ui.fragments.ARFragment
 import cu.netscope.pro.ui.fragments.CellsFragment
 import cu.netscope.pro.ui.fragments.CompassFragment
-import cu.netscope.pro.ui.fragments.DualSIMFragment
 import cu.netscope.pro.ui.fragments.NetworkModeFragment
-import cu.netscope.pro.ui.fragments.PortScannerFragment
 import cu.netscope.pro.ui.fragments.SettingsFragment
 import cu.netscope.pro.ui.fragments.SpeedMeterFragment
 
@@ -31,10 +28,7 @@ class MainActivity : AppCompatActivity() {
         const val TAG_CELLS = "cells"
         const val TAG_SPEED = "speed"
         const val TAG_COMPASS = "compass"
-        const val TAG_AR = "ar"
-        const val TAG_DUALSIM = "dualsim"
         const val TAG_NETMODE = "netmode"
-        const val TAG_PORTSCAN = "portscan"
         const val TAG_SETTINGS = "settings"
     }
 
@@ -46,7 +40,6 @@ class MainActivity : AppCompatActivity() {
         setupDrawer()
         requestPermissions()
 
-        // Iniciar con el fragmento de celdas
         if (savedInstanceState == null) {
             navigateToFragment(CellsFragment(), TAG_CELLS)
             binding.navView.setCheckedItem(R.id.nav_cells)
@@ -74,10 +67,7 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_cells -> navigateToFragment(CellsFragment(), TAG_CELLS)
                 R.id.nav_speed -> navigateToFragment(SpeedMeterFragment(), TAG_SPEED)
                 R.id.nav_compass -> navigateToFragment(CompassFragment(), TAG_COMPASS)
-                R.id.nav_ar -> navigateToFragment(ARFragment(), TAG_AR)
-                R.id.nav_dualsim -> navigateToFragment(DualSIMFragment(), TAG_DUALSIM)
                 R.id.nav_netmode -> navigateToFragment(NetworkModeFragment(), TAG_NETMODE)
-                R.id.nav_portscan -> navigateToFragment(PortScannerFragment(), TAG_PORTSCAN)
                 R.id.nav_settings -> navigateToFragment(SettingsFragment(), TAG_SETTINGS)
                 R.id.nav_about -> showAboutDialog()
             }
@@ -88,7 +78,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun navigateToFragment(fragment: Fragment, tag: String) {
         supportFragmentManager.beginTransaction()
-            .setCustomAnimations(0, 0, 0, 0) // Sin animaciones para máxima velocidad
+            .setCustomAnimations(0, 0, 0, 0)
             .replace(R.id.fragment_container, fragment, tag)
             .commit()
     }
@@ -153,10 +143,5 @@ class MainActivity : AppCompatActivity() {
             return true
         }
         return super.onOptionsItemSelected(item)
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        // No detenemos el servicio aquí para mantener la notificación
     }
 }

@@ -44,7 +44,7 @@ class CellsFragment : Fragment() {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = cellAdapter
             setHasFixedSize(true)
-            itemAnimator = null // Sin animaciones para máxima velocidad
+            itemAnimator = null
         }
     }
 
@@ -55,44 +55,46 @@ class CellsFragment : Fragment() {
     }
 
     private fun updateUI(state: NetworkState) {
-        // Actualizar header con información del operador
         binding.textOperatorName.text = state.operatorName
         binding.textNetworkGen.text = state.networkGeneration
         binding.textNetworkType.text = state.networkType
         
         val primaryCell = state.primaryCell
-        if (primaryCell != null) {
+        if (primaryCell != null && primaryCell.dbm < 0) {
             binding.textPrimaryDbm.text = "${primaryCell.dbm} dBm"
-            binding.textPrimaryBand.text = "Banda ${primaryCell.band}"
-            binding.textPrimaryDistance.text = primaryCell.distanceFormatted
+            binding.textPrimaryBand.text = primaryCell.band
             
-            // Indicador visual de intensidad de señal
             val signalLevel = primaryCell.signalLevel
-            binding.signalIndicator.text = when (signalLevel) {
-                5 -> "█████"
-                4 -> "████"
-                3 -> "███"
-                2 -> "██"
-                1 -> "█"
+            binding.textSignalLevel.text = when (signalLevel) {
+                5 -> "Excelente"
+                4 -> "Buena"
+                3 -> "Regular"
+                2 -> "Mala"
+                1 -> "Muy débil"
                 else -> "Sin señal"
             }
             
-            // Color según intensidad
             val signalColor = when {
-                signalLevel >= 4 -> 0xFF4CAF50.toInt() // Verde
-                signalLevel >= 2 -> 0xFFFFC107.toInt() // Ámbar
-                else -> 0xFFF44336.toInt() // Rojo
+                signalLevel >= 4 -> 0xFF4CAF50.toInt()
+                signalLevel >= 3 -> 0xFF8BC34A.toInt()
+                signalLevel >= 2 -> 0xFFFFC107.toInt()
+                signalLevel >= 1 -> 0xFFFF9800.toInt()
+                else -> 0xFFF44336.toInt()
             }
-            binding.signalIndicator.setTextColor(signalColor)
+            binding.textSignalLevel.setTextColor(signalColor)
+            binding.textPrimaryDbm.setTextColor(signalColor)
+        } else {
+            binding.textPrimaryDbm.text = "-- dBm"
+            binding.textPrimaryBand.text = "?"
+            binding.textSignalLevel.text = "Buscando..."
+            binding.textSignalLevel.setTextColor(0xFF888888.toInt())
+            binding.textPrimaryDbm.setTextColor(0xFF888888.toInt())
         }
 
-        // Ordenar celdas: primaria primero, luego por intensidad
         allCells = state.cells.sortedWith(compareByDescending<CellInfo> { it.isRegistered }
             .thenByDescending { it.dbm })
         
         cellAdapter.submitList(allCells)
-        
-        // Actualizar contador
         binding.textCellCount.text = "${allCells.size} celdas detectadas"
     }
 
@@ -101,8 +103,10 @@ class CellsFragment : Fragment() {
             .setTitle("Detalles de Celda ${cell.type}")
             .setMessage(buildString {
                 append("Tipo: ").append(cell.type).append("\n")
-                append("MCC: ").append(cell.mcc).append("\n")
-                append("MNC: ").append(cell.mnc).append("\n")
+                append("Señal: ").append(cell.dbm).append(" dBm\n")
+                if (cell.band.isNotEmpty() && cell.band != "?") {
+                    append("Banda: ").append(cell.band).append("\n")
+                }
                 if (cell.tac.isNotEmpty() && cell.tac != "0") {
                     append("TAC: ").append(cell.tac).append("\n")
                 }
@@ -115,27 +119,13 @@ class CellsFragment : Fragment() {
                 if (cell.pci.isNotEmpty() && cell.pci != "0") {
                     append("PCI: ").append(cell.pci).append("\n")
                 }
-                if (cell.band.isNotEmpty() && cell.band != "?") {
-                    append("Banda: ").append(cell.band).append("\n")
-                }
-                if (cell.frequency.isNotEmpty() && cell.frequency != "?") {
-                    append("Frecuencia/EARFCN: ").append(cell.frequency).append("\n")
-                }
-                append("Señal: ").append(cell.dbm).append(" dBm\n")
-                if (cell.rsrp != 0) append("RSRP: ").append(cell.rsrp).append(" dBm\n")
-                if (cell.rsrq != 0) append("RSRQ: ").append(cell.rsrq).append(" dB\n")
-                if (cell.sinr != 0) append("SINR: ").append(cell.sinr).append(" dB\n")
                 if (cell.bsic.isNotEmpty() && cell.bsic != "0") {
                     append("BSIC: ").append(cell.bsic).append("\n")
                 }
-                append("Distancia est.: ").append(cell.distanceFormatted).append("\n")
                 if (cell.spectralEfficiency > 0) {
                     append("Efic. Espectral: ")
                     append(String.format("%.2f", cell.spectralEfficiency))
                     append(" bps/Hz\n")
-                }
-                if (cell.timingAdvance > 0) {
-                    append("Timing Advance: ").append(cell.timingAdvance).append("\n")
                 }
                 append("Conectado: ").append(if (cell.isConnected) "Sí" else "No")
             })

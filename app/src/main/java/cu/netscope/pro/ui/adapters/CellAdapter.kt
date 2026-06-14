@@ -28,7 +28,6 @@ class CellAdapter(
         private val textType: TextView = itemView.findViewById(R.id.text_cell_type)
         private val textBand: TextView = itemView.findViewById(R.id.text_cell_band)
         private val textDbm: TextView = itemView.findViewById(R.id.text_cell_dbm)
-        private val textDistance: TextView = itemView.findViewById(R.id.text_cell_distance)
         private val textCid: TextView = itemView.findViewById(R.id.text_cell_cid)
         private val textExtra: TextView = itemView.findViewById(R.id.text_cell_extra)
         private val viewIndicator: View = itemView.findViewById(R.id.view_signal_indicator)
@@ -36,11 +35,9 @@ class CellAdapter(
 
         fun bind(cell: CellInfo) {
             textType.text = cell.type
-            textBand.text = if (cell.band != "?") "B${cell.band}" else ""
+            textBand.text = if (cell.band != "?") cell.band else ""
             textDbm.text = "${cell.dbm} dBm"
-            textDistance.text = cell.distanceFormatted
             
-            // Mostrar CID o PCI según el tipo
             val identifier = when {
                 cell.cid.isNotEmpty() && cell.cid != "0" -> "CID: ${cell.cid}"
                 cell.pci.isNotEmpty() && cell.pci != "0" -> "PCI: ${cell.pci}"
@@ -48,19 +45,13 @@ class CellAdapter(
             }
             textCid.text = identifier
             
-            // Información extra (frecuencia, eficiencia)
             val extraInfo = buildString {
-                if (cell.frequency.isNotEmpty() && cell.frequency != "?") {
-                    append("EARFCN: ${cell.frequency}")
-                }
                 if (cell.spectralEfficiency > 0) {
-                    if (isNotEmpty()) append(" | ")
                     append("${String.format("%.1f", cell.spectralEfficiency)} bps/Hz")
                 }
             }
             textExtra.text = extraInfo
             
-            // Color según intensidad de señal
             val signalColor = when {
                 cell.dbm >= -75 -> 0xFF4CAF50.toInt()
                 cell.dbm >= -85 -> 0xFF8BC34A.toInt()
@@ -70,8 +61,6 @@ class CellAdapter(
                 else -> 0xFFF44336.toInt()
             }
             viewIndicator.setBackgroundColor(signalColor)
-            
-            // Indicador de celda conectada
             viewConnected.visibility = if (cell.isConnected) View.VISIBLE else View.GONE
             
             itemView.setOnClickListener {

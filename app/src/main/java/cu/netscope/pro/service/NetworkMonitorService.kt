@@ -124,6 +124,7 @@ class NetworkMonitorService : LifecycleService() {
             .build()
     }
 
+    @Suppress("DEPRECATION")
     private fun setupTelephonyMonitoring() {
         telephonyManager = getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
 
@@ -236,7 +237,17 @@ class NetworkMonitorService : LifecycleService() {
                 cell.cid = cellInfo.cellIdentity.ci.toString()
                 cell.tac = cellInfo.cellIdentity.tac.toString()
                 cell.pci = cellInfo.cellIdentity.pci.toString()
-                cell.band = "?"
+                // Obtener banda real
+                cell.band = try {
+                    val bands = cellInfo.cellIdentity.bands
+                    if (bands != null && bands.isNotEmpty()) {
+                        "B${bands[0]}"
+                    } else {
+                        "?"
+                    }
+                } catch (e: Exception) {
+                    "?"
+                }
                 cell.estimatedDistance = DistanceCalculator.estimateDistance(cell.dbm, 3)
                 cell.spectralEfficiency = SpectralEfficiencyCalculator.calculateLTE(cell.dbm, 3)
             }
@@ -308,6 +319,8 @@ class NetworkMonitorService : LifecycleService() {
             append(state.operatorName)
             append(" | ")
             append(state.networkGeneration)
+            append(" | ")
+            append(primaryCell?.band ?: "?")
             append(" | ")
             append(primaryCell?.dbm ?: "?")
             append(" dBm")

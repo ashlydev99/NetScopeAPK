@@ -17,14 +17,12 @@
         android:padding="12dp"
         android:gravity="center_vertical">
 
-        <!-- Indicador visual de intensidad -->
         <View
             android:id="@+id/view_signal_indicator"
             android:layout_width="4dp"
             android:layout_height="48dp"
             android:background="#4CAF50" />
 
-        <!-- Indicador de conectado -->
         <View
             android:id="@+id/view_connected"
             android:layout_width="8dp"
@@ -33,7 +31,6 @@
             android:layout_marginStart="8dp"
             android:visibility="gone" />
 
-        <!-- Info de celda -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -81,31 +78,7 @@
                     android:textStyle="bold" />
 
                 <TextView
-                    android:id="@+id/text_cell_distance"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="..."
-                    android:textColor="#B0B0B0"
-                    android:textSize="12sp"
-                    android:layout_marginStart="16dp" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginTop="2dp">
-
-                <TextView
                     android:id="@+id/text_cell_cid"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text=""
-                    android:textColor="#888888"
-                    android:textSize="11sp" />
-
-                <TextView
-                    android:id="@+id/text_cell_extra"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text=""
@@ -113,6 +86,15 @@
                     android:textSize="11sp"
                     android:layout_marginStart="16dp" />
             </LinearLayout>
+
+            <TextView
+                android:id="@+id/text_cell_extra"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textColor="#888888"
+                android:textSize="11sp"
+                android:layout_marginTop="2dp" />
         </LinearLayout>
     </LinearLayout>
 </androidx.cardview.widget.CardView>

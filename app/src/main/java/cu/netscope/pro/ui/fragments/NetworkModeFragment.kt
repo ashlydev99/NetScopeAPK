@@ -10,6 +10,7 @@ import android.view.ViewGroup
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import androidx.fragment.app.Fragment
+import cu.netscope.pro.R
 import cu.netscope.pro.databinding.FragmentNetworkModeBinding
 
 class NetworkModeFragment : Fragment() {
@@ -34,8 +35,7 @@ class NetworkModeFragment : Fragment() {
 
     private fun setupModeSelector() {
         val modes = listOf(
-            "Automático (5G/4G/3G/2G)",
-            "Solo 5G (NR Only)",
+            "Automático (4G/3G/2G)",
             "Solo 4G (LTE Only)",
             "Solo 3G (WCDMA Only)",
             "Solo 2G (GSM Only)",
@@ -45,51 +45,66 @@ class NetworkModeFragment : Fragment() {
         
         val adapter = ArrayAdapter(
             requireContext(),
-            android.R.layout.simple_spinner_dropdown_item,
+            android.R.layout.simple_spinner_item,
             modes
         )
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         
         binding.spinnerNetworkMode.adapter = adapter
-        binding.spinnerNetworkMode.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                if (position > 0) { // No forzar en automático
-                    applyNetworkMode(position)
-                }
-            }
-
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
-        }
         
-        // Botón para abrir menú de ingeniería
         binding.btnEngineeringMenu.setOnClickListener {
             openEngineeringMenu()
+        }
+        
+        binding.btn4gOnly.setOnClickListener {
+            openNetworkSettings()
+        }
+        
+        binding.btn5gOnly.setOnClickListener {
+            openNetworkSettings()
+        }
+        
+        binding.btnAutoMode.setOnClickListener {
+            openNetworkSettings()
+        }
+        
+        binding.btn3gOnly.setOnClickListener {
+            openNetworkSettings()
         }
     }
 
     private fun loadCurrentMode() {
-        val tm = requireContext().getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
-        val currentMode = when (tm.dataNetworkType) {
-            TelephonyManager.NETWORK_TYPE_NR -> "5G NR"
-            TelephonyManager.NETWORK_TYPE_LTE -> "4G LTE"
-            TelephonyManager.NETWORK_TYPE_UMTS -> "3G WCDMA"
-            TelephonyManager.NETWORK_TYPE_GSM -> "2G GSM"
-            else -> "Otro"
+        try {
+            val tm = requireContext().getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+            val currentMode = when (tm.dataNetworkType) {
+                TelephonyManager.NETWORK_TYPE_LTE -> "4G LTE"
+                TelephonyManager.NETWORK_TYPE_UMTS -> "3G WCDMA"
+                TelephonyManager.NETWORK_TYPE_GSM -> "2G GSM"
+                TelephonyManager.NETWORK_TYPE_HSDPA -> "3.5G HSPA"
+                TelephonyManager.NETWORK_TYPE_HSPAP -> "3.5G HSPA+"
+                else -> "Otro"
+            }
+            binding.textCurrentMode.text = "Modo actual: $currentMode"
+        } catch (e: Exception) {
+            binding.textCurrentMode.text = "Modo actual: Desconocido"
         }
-        
-        binding.textCurrentMode.text = "Modo actual: $currentMode"
     }
 
-    private fun applyNetworkMode(position: Int) {
-        // La API pública no permite forzar modos sin root
-        // Abrimos el menú de configuración de red del sistema
-        val intent = Intent(android.provider.Settings.ACTION_NETWORK_OPERATOR_SETTINGS)
-        startActivity(intent)
-        
-        binding.textStatus.text = "Redirigiendo a configuración de red..."
+    private fun openNetworkSettings() {
+        try {
+            val intent = Intent(android.provider.Settings.ACTION_NETWORK_OPERATOR_SETTINGS)
+            startActivity(intent)
+        } catch (e: Exception) {
+            try {
+                val intent = Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS)
+                startActivity(intent)
+            } catch (e2: Exception) {
+                binding.textStatus.text = "No se pudo abrir configuración"
+            }
+        }
     }
 
     private fun openEngineeringMenu() {
-        // Intentar abrir el menú de ingeniería mediante código USSD
         try {
             val intent = Intent(Intent.ACTION_DIAL)
             intent.data = android.net.Uri.parse("tel:*#*#4636#*#*")
