@@ -200,9 +200,7 @@ class NetworkMonitorService : LifecycleService() {
 
         val allCells = tm.allCellInfo
         if (allCells != null && allCells.isNotEmpty()) {
-            state.cells = allCells.mapNotNull { cellInfo ->
-                parseCellInfo(cellInfo)
-            }
+            state.cells = allCells.mapNotNull { parseCellInfo(it) }
             val primaryCell = allCells.firstOrNull { it.isRegistered }
             if (primaryCell != null) {
                 state.primaryCell = parseCellInfo(primaryCell)
@@ -215,7 +213,6 @@ class NetworkMonitorService : LifecycleService() {
 
     private fun parseCellInfo(cellInfo: android.telephony.CellInfo): CellInfo {
         val cell = CellInfo()
-
         when (cellInfo) {
             is android.telephony.CellInfoLte -> {
                 val identity = cellInfo.cellIdentity
@@ -227,7 +224,6 @@ class NetworkMonitorService : LifecycleService() {
                 cell.frequency = identity.earfcn?.toString() ?: "?"
                 cell.dbm = cellInfo.cellSignalStrength.dbm
                 cell.isRegistered = cellInfo.isRegistered
-                Log.d(TAG, "LTE parseado: dBm=${cell.dbm}, banda=${cell.band}, CID=${cell.cid}")
             }
             is android.telephony.CellInfoWcdma -> {
                 val identity = cellInfo.cellIdentity
@@ -248,19 +244,7 @@ class NetworkMonitorService : LifecycleService() {
                 cell.bsic = identity.bsic.toString()
                 cell.isRegistered = cellInfo.isRegistered
             }
-            is android.telephony.CellInfoNr -> {
-                val identity = cellInfo.cellIdentity
-                cell.type = "5G NR"
-                cell.tac = identity.tac.toString()
-                cell.cid = identity.nci?.toString() ?: "?"
-                cell.pci = identity.pci.toString()
-                cell.band = identity.bands?.firstOrNull()?.toString()?.let { "n$it" } ?: "?"
-                cell.frequency = identity.nrarfcn?.toString() ?: "?"
-                cell.dbm = cellInfo.cellSignalStrength.dbm
-                cell.isRegistered = cellInfo.isRegistered
-            }
         }
-
         return cell
     }
 
