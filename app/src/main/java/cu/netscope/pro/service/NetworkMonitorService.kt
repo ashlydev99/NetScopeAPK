@@ -5,7 +5,6 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -15,7 +14,6 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.telephony.*
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
@@ -46,7 +44,6 @@ class NetworkMonitorService : LifecycleService() {
         private const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "network_monitor_channel"
         const val ACTION_STOP = "cu.netscope.pro.STOP_SERVICE"
-        const val ACTION_UPDATE = "cu.netscope.pro.UPDATE_STATE"
 
         var networkStateListener: ((NetworkState) -> Unit)? = null
 
@@ -134,11 +131,9 @@ class NetworkMonitorService : LifecycleService() {
             override fun onSignalStrengthsChanged(signalStrength: SignalStrength) {
                 updateNetworkState()
             }
-
             override fun onCellInfoChanged(cellInfo: MutableList<android.telephony.CellInfo>) {
                 updateNetworkState()
             }
-
             override fun onDisplayInfoChanged(telephonyDisplayInfo: TelephonyDisplayInfo) {
                 updateNetworkState()
             }
@@ -202,6 +197,15 @@ class NetworkMonitorService : LifecycleService() {
         updateNotification()
     }
 
+    @Suppress("DEPRECATION")
+    private fun getSignalDbm(signalStrength: SignalStrength): Int {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            signalStrength.dbm
+        } else {
+            -1
+        }
+    }
+
     private fun updateNetworkState() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
             != PackageManager.PERMISSION_GRANTED) return
@@ -220,22 +224,9 @@ class NetworkMonitorService : LifecycleService() {
             state.cells = allCells.mapNotNull { cellInfo ->
                 parseCellInfo(cellInfo)
             }
-
             val primaryCell = allCells.firstOrNull { it.isRegistered }
             if (primaryCell != null) {
                 state.primaryCell = parseCellInfo(primaryCell)
-            }
-        }
-
-        // Señal - usando API estable
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val signalStrength = tm.signalStrength
-            if (signalStrength != null) {
-                val dbm = getDbm(signalStrength)
-                state.dbm = dbm
-                state.rsrp = dbm
-                state.rsrq = getRsrqCompat(signalStrength)
-                state.sinr = getSinrCompat(signalStrength)
             }
         }
 
@@ -243,112 +234,55 @@ class NetworkMonitorService : LifecycleService() {
         networkStateListener?.invoke(state)
     }
 
-    private fun getDbm(signalStrength: SignalStrength): Int {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            signalStrength.dbm
-        } else {
-            @Suppress("DEPRECATION")
-            signalStrength.dbm
-        }
-    }
-
-    private fun getRsrqCompat(signalStrength: SignalStrength): Int {
-        return try {
-            signalStrength.getRsrq()
-        } catch (e: Exception) {
-            -1
-        }
-    }
-
-    private fun getSinrCompat(signalStrength: SignalStrength): Int {
-        return try {
-            signalStrength.getRssnr()
-        } catch (e: Exception) {
-            -1
-        }
-    }
-
     private fun parseCellInfo(cellInfo: android.telephony.CellInfo): CellInfo {
         val cell = CellInfo()
+        cell.isRegistered = cellInfo.isRegistered
 
         when (cellInfo) {
             is android.telephony.CellInfoLte -> {
                 val identity = cellInfo.cellIdentity
                 cell.type = "LTE"
-                cell.mcc = identity.mccString ?: ""
-                cell.mnc = identity.mncString ?: ""
+                cell.mcc = if (identity.mccString != null) identity.mccString else ""
+                cell.mnc = if (identity.mncString != null) identity.mncString else ""
                 cell.tac = identity.tac.toString()
                 cell.cid = identity.ci.toString()
                 cell.pci = identity.pci.toString()
-                cell.band = identity.bands?.firstOrNull()?.toString() ?: "?"
-                cell.frequency = identity.earfcn?.toString() ?: "?"
                 cell.dbm = cellInfo.cellSignalStrength.dbm
-                cell.rsrp = cellInfo.cellSignalStrength.dbm
-                cell.rsrq = cellInfo.cellSignalStrength.rsrq
-                cell.sinr = cellInfo.cellSignalStrength.rssi
-                cell.isRegistered = cellInfo.isRegistered
                 cell.timingAdvance = cellInfo.cellSignalStrength.timingAdvance
-                cell.estimatedDistance = DistanceCalculator.estimateDistance(
-                    cellInfo.cellSignalStrength.dbm,
-                    identity.bands?.firstOrNull() ?: 3
-                )
-                cell.spectralEfficiency = SpectralEfficiencyCalculator.calculateLTE(
-                    cellInfo.cellSignalStrength.dbm,
-                    identity.bands?.firstOrNull() ?: 3
-                )
+                cell.estimatedDistance = DistanceCalculator.estimateDistance(cell.dbm, identity.bands?.firstOrNull() ?: 3)
+                cell.spectralEfficiency = SpectralEfficiencyCalculator.calculateLTE(cell.dbm, identity.bands?.firstOrNull() ?: 3)
             }
             is android.telephony.CellInfoWcdma -> {
                 val identity = cellInfo.cellIdentity
                 cell.type = "WCDMA"
-                cell.mcc = identity.mccString ?: ""
-                cell.mnc = identity.mncString ?: ""
+                cell.mcc = if (identity.mccString != null) identity.mccString else ""
+                cell.mnc = if (identity.mncString != null) identity.mncString else ""
                 cell.cid = identity.cid?.toString() ?: "?"
                 cell.lac = identity.lac?.toString() ?: "?"
-                cell.band = "?"
                 cell.dbm = cellInfo.cellSignalStrength.dbm
-                cell.isRegistered = cellInfo.isRegistered
-                cell.estimatedDistance = DistanceCalculator.estimateDistance(
-                    cellInfo.cellSignalStrength.dbm, 1
-                )
+                cell.estimatedDistance = DistanceCalculator.estimateDistance(cell.dbm, 1)
             }
             is android.telephony.CellInfoGsm -> {
                 val identity = cellInfo.cellIdentity
                 cell.type = "GSM"
-                cell.mcc = identity.mccString ?: ""
-                cell.mnc = identity.mncString ?: ""
+                cell.mcc = if (identity.mccString != null) identity.mccString else ""
+                cell.mnc = if (identity.mncString != null) identity.mncString else ""
                 cell.cid = identity.cid.toString()
                 cell.lac = identity.lac.toString()
-                cell.band = "?"
                 cell.dbm = cellInfo.cellSignalStrength.dbm
-                cell.bsic = identity.bsic.toString()
-                cell.isRegistered = cellInfo.isRegistered
-                cell.estimatedDistance = DistanceCalculator.estimateDistance(
-                    cellInfo.cellSignalStrength.dbm, 0
-                )
+                cell.estimatedDistance = DistanceCalculator.estimateDistance(cell.dbm, 0)
             }
             is android.telephony.CellInfoNr -> {
                 val identity = cellInfo.cellIdentity
                 cell.type = "5G NR"
-                cell.mcc = identity.mccString ?: ""
-                cell.mnc = identity.mncString ?: ""
+                cell.mcc = if (identity.mccString != null) identity.mccString else ""
+                cell.mnc = if (identity.mncString != null) identity.mncString else ""
                 cell.tac = identity.tac.toString()
                 cell.cid = identity.nci?.toString() ?: "?"
                 cell.pci = identity.pci.toString()
-                cell.band = identity.bands?.firstOrNull()?.toString() ?: "?"
-                cell.frequency = identity.nrarfcn?.toString() ?: "?"
                 cell.dbm = cellInfo.cellSignalStrength.dbm
-                cell.rsrp = cellInfo.cellSignalStrength.dbm
-                cell.rsrq = cellInfo.cellSignalStrength.csiRsrq
-                cell.sinr = cellInfo.cellSignalStrength.csiSinr
-                cell.isRegistered = cellInfo.isRegistered
-                cell.estimatedDistance = DistanceCalculator.estimateDistance(
-                    cellInfo.cellSignalStrength.dbm,
-                    identity.bands?.firstOrNull() ?: 78
-                )
-                cell.spectralEfficiency = SpectralEfficiencyCalculator.calculateNR(
-                    cellInfo.cellSignalStrength.dbm,
-                    identity.bands?.firstOrNull() ?: 78
-                )
+                cell.estimatedDistance = DistanceCalculator.estimateDistance(cell.dbm, identity.bands?.firstOrNull() ?: 78)
+                cell.spectralEfficiency = SpectralEfficiencyCalculator.calculateNR(cell.dbm, identity.bands?.firstOrNull() ?: 78)
             }
         }
 
@@ -379,20 +313,13 @@ class NetworkMonitorService : LifecycleService() {
 
     private fun getNetworkGeneration(networkType: Int): String {
         return when (networkType) {
-            TelephonyManager.NETWORK_TYPE_GPRS,
-            TelephonyManager.NETWORK_TYPE_EDGE,
-            TelephonyManager.NETWORK_TYPE_CDMA,
-            TelephonyManager.NETWORK_TYPE_1xRTT -> "2G"
-            TelephonyManager.NETWORK_TYPE_UMTS,
-            TelephonyManager.NETWORK_TYPE_EVDO_0,
-            TelephonyManager.NETWORK_TYPE_EVDO_A,
-            TelephonyManager.NETWORK_TYPE_EVDO_B -> "3G"
-            TelephonyManager.NETWORK_TYPE_HSDPA,
-            TelephonyManager.NETWORK_TYPE_HSUPA,
-            TelephonyManager.NETWORK_TYPE_HSPA,
-            TelephonyManager.NETWORK_TYPE_HSPAP -> "3.5G"
-            TelephonyManager.NETWORK_TYPE_LTE,
-            TelephonyManager.NETWORK_TYPE_EHRPD -> "4G"
+            TelephonyManager.NETWORK_TYPE_GPRS, TelephonyManager.NETWORK_TYPE_EDGE,
+            TelephonyManager.NETWORK_TYPE_CDMA, TelephonyManager.NETWORK_TYPE_1xRTT -> "2G"
+            TelephonyManager.NETWORK_TYPE_UMTS, TelephonyManager.NETWORK_TYPE_EVDO_0,
+            TelephonyManager.NETWORK_TYPE_EVDO_A, TelephonyManager.NETWORK_TYPE_EVDO_B -> "3G"
+            TelephonyManager.NETWORK_TYPE_HSDPA, TelephonyManager.NETWORK_TYPE_HSUPA,
+            TelephonyManager.NETWORK_TYPE_HSPA, TelephonyManager.NETWORK_TYPE_HSPAP -> "3.5G"
+            TelephonyManager.NETWORK_TYPE_LTE, TelephonyManager.NETWORK_TYPE_EHRPD -> "4G"
             TelephonyManager.NETWORK_TYPE_NR -> "5G"
             else -> "?"
         }
@@ -411,18 +338,6 @@ class NetworkMonitorService : LifecycleService() {
             append(" | ")
             append(primaryCell?.dbm ?: "?")
             append(" dBm")
-            if (primaryCell?.frequency != null && primaryCell.frequency != "?") {
-                append(" | EARFCN: ")
-                append(primaryCell.frequency)
-            }
-            if (primaryCell?.cid != null && primaryCell.cid != "?") {
-                append(" | CID: ")
-                append(primaryCell.cid)
-            }
-            if (primaryCell?.bsic != null && primaryCell.bsic != "?") {
-                append(" | BSIC: ")
-                append(primaryCell.bsic)
-            }
         }
 
         val notification = buildNotification(info)
