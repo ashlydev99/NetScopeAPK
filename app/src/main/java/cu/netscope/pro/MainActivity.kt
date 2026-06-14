@@ -25,7 +25,6 @@ class MainActivity : AppCompatActivity() {
         setupToolbar()
         requestPermissions()
 
-        // Iniciar con pantalla de celdas
         if (savedInstanceState == null) {
             showCellsFragment()
         }

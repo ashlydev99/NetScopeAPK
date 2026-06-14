@@ -118,7 +118,7 @@ class NetworkMonitorService : LifecycleService() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("NetScope Pro")
             .setContentText(info)
-            .setSmallIcon(R.drawable.ic_signal)
+            .setSmallIcon(R.drawable.ic_signal_notification)
             .setOngoing(true)
             .setContentIntent(contentPendingIntent)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Salir", stopPendingIntent)
@@ -201,8 +201,6 @@ class NetworkMonitorService : LifecycleService() {
     }
 
     private fun updateNetworkState() {
-        Log.d(TAG, "updateNetworkState llamado")
-        
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
             != PackageManager.PERMISSION_GRANTED) return
 
@@ -218,10 +216,6 @@ class NetworkMonitorService : LifecycleService() {
         val allCells = tm.allCellInfo
         if (allCells != null && allCells.isNotEmpty()) {
             state.cells = allCells.mapNotNull { parseCellInfo(it) }
-            val primaryCell = allCells.firstOrNull { it.isRegistered }
-            if (primaryCell != null) {
-                state.primaryCell = parseCellInfo(primaryCell)
-            }
         }
 
         currentNetworkState.set(state)
@@ -236,12 +230,18 @@ class NetworkMonitorService : LifecycleService() {
             is android.telephony.CellInfoLte -> {
                 cell.type = "LTE"
                 cell.dbm = cellInfo.cellSignalStrength.dbm
-                cell.cid = cellInfo.cellIdentity.ci.toString()
                 cell.tac = cellInfo.cellIdentity.tac.toString()
+                cell.cid = cellInfo.cellIdentity.ci.toString()
                 cell.pci = cellInfo.cellIdentity.pci.toString()
+                
+                // Banda LTE
                 cell.band = try {
-                    val bands = cellInfo.cellIdentity.bands
-                    if (bands != null && bands.isNotEmpty()) "B${bands[0]}" else "?"
+                    cellInfo.cellIdentity.bands?.firstOrNull()?.let { "B$it" } ?: "?"
+                } catch (e: Exception) { "?" }
+                
+                // Frecuencia EARFCN
+                cell.frequency = try {
+                    cellInfo.cellIdentity.earfcn?.toString() ?: "?"
                 } catch (e: Exception) { "?" }
             }
             is android.telephony.CellInfoWcdma -> {
@@ -249,19 +249,41 @@ class NetworkMonitorService : LifecycleService() {
                 cell.dbm = cellInfo.cellSignalStrength.dbm
                 cell.cid = cellInfo.cellIdentity.cid?.toString() ?: "?"
                 cell.lac = cellInfo.cellIdentity.lac?.toString() ?: "?"
-                cell.band = "?"
+                cell.band = try {
+                    cellInfo.cellIdentity.uarfcn?.let { uarfcn ->
+                        // Estimar banda WCDMA por UARFCN
+                        when {
+                            uarfcn in 10562..10838 -> "B1"
+                            uarfcn in 9662..9938 -> "B2"
+                            uarfcn in 1162..1513 -> "B5"
+                            uarfcn in 2937..3088 -> "B8"
+                            else -> "?"
+                        }
+                    } ?: "?"
+                } catch (e: Exception) { "?" }
             }
             is android.telephony.CellInfoGsm -> {
                 cell.type = "GSM"
                 cell.dbm = cellInfo.cellSignalStrength.dbm
                 cell.cid = cellInfo.cellIdentity.cid.toString()
                 cell.lac = cellInfo.cellIdentity.lac.toString()
-                cell.band = "?"
                 cell.bsic = cellInfo.cellIdentity.bsic.toString()
+                cell.band = try {
+                    cellInfo.cellIdentity.arfcn?.let { arfcn ->
+                        // Estimar banda GSM por ARFCN
+                        when {
+                            arfcn in 1..124 -> "GSM900"
+                            arfcn in 512..885 -> "GSM1800"
+                            arfcn in 128..251 -> "GSM850"
+                            else -> "?"
+                        }
+                    } ?: "?"
+                } catch (e: Exception) { "?" }
             }
             else -> {
                 cell.type = "Otro"
                 cell.dbm = -1
+                cell.band = "?"
             }
         }
 
@@ -297,8 +319,8 @@ class NetworkMonitorService : LifecycleService() {
 
     private fun updateNotification() {
         val state = currentNetworkState.get()
-        val primaryCell = state.primaryCell
-        val info = "${state.operatorName} | ${state.networkGeneration} | ${primaryCell?.band ?: "?"} | ${primaryCell?.dbm ?: "?"} dBm"
+        val connectedCell = state.cells.firstOrNull { it.isRegistered }
+        val info = "${state.operatorName} | ${state.networkGeneration} | ${connectedCell?.band ?: "?"} | ${connectedCell?.dbm ?: "?"} dBm"
         val notification = buildNotification(info)
         val notificationManager = getSystemService(NotificationManager::class.java)
         notificationManager.notify(NOTIFICATION_ID, notification)

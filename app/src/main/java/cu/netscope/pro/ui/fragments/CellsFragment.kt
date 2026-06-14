@@ -76,18 +76,19 @@ class CellsFragment : Fragment() {
             binding.textSignalLevel.text = when (signalLevel) {
                 5 -> "Excelente"
                 4 -> "Buena"
-                3 -> "Regular"
+                3 -> "Inestable"
                 2 -> "Mala"
                 1 -> "Muy débil"
                 else -> "Sin señal"
             }
             
             val signalColor = when {
-                signalLevel >= 4 -> 0xFF4CAF50.toInt()
-                signalLevel >= 3 -> 0xFF8BC34A.toInt()
-                signalLevel >= 2 -> 0xFFFFC107.toInt()
-                signalLevel >= 1 -> 0xFFFF9800.toInt()
-                else -> 0xFFF44336.toInt()
+                signalLevel >= 5 -> 0xFF4CAF50.toInt()
+                signalLevel == 4 -> 0xFF8BC34A.toInt()
+                signalLevel == 3 -> 0xFFFFC107.toInt()
+                signalLevel == 2 -> 0xFFFF9800.toInt()
+                signalLevel == 1 -> 0xFFF44336.toInt()
+                else -> 0xFF888888.toInt()
             }
             binding.textSignalLevel.setTextColor(signalColor)
             binding.textPrimaryDbm.setTextColor(signalColor)
@@ -117,6 +118,9 @@ class CellsFragment : Fragment() {
                     append("Señal: ").append(cell.dbm ?: "?").append(" dBm\n")
                     if (cell.band != null && cell.band.isNotEmpty() && cell.band != "?") {
                         append("Banda: ").append(cell.band).append("\n")
+                    }
+                    if (cell.frequency != null && cell.frequency.isNotEmpty() && cell.frequency != "?") {
+                        append("Frecuencia: ").append(cell.frequency).append("\n")
                     }
                     if (cell.tac != null && cell.tac.isNotEmpty() && cell.tac != "0") {
                         append("TAC: ").append(cell.tac).append("\n")
