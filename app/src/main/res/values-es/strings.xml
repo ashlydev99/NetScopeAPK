@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NetScope Pro</string>
+    <string name="open_drawer">Abrir menú</string>
+    <string name="close_drawer">Cerrar menú</string>
+    
+    <string name="nav_cells">Celdas</string>
+    <string name="nav_speed">Velocímetro</string>
+    <string name="nav_compass">Brújula</string>
+    <string name="nav_ar">Realidad Aumentada</string>
+    <string name="nav_dualsim">Dual SIM</string>
+    <string name="nav_netmode">Modo de Red</string>
+    <string name="nav_portscan">Escáner de Puertos</string>
+    <string name="nav_settings">Ajustes</string>
+    <string name="nav_about">Acerca de</string>
+</resources>

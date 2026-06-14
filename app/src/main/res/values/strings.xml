@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NetScope Pro</string>
+    <string name="open_drawer">Abrir menú</string>
+    <string name="close_drawer">Cerrar menú</string>
+    
+    <!-- Secciones del menú -->
+    <string name="nav_cells">Celdas</string>
+    <string name="nav_speed">Velocímetro</string>
+    <string name="nav_compass">Brújula</string>
+    <string name="nav_ar">Realidad Aumentada</string>
+    <string name="nav_dualsim">Dual SIM</string>
+    <string name="nav_netmode">Modo de Red</string>
+    <string name="nav_portscan">Escáner de Puertos</string>
+    <string name="nav_settings">Ajustes</string>
+    <string name="nav_about">Acerca de</string>
+    
+    <!-- Acerca de -->
+    <string name="about_title">Acerca de NetScope Pro</string>
+    <string name="about_message">Creado con amor para la comunidad.\n\nDesarrollador: Ashly Dev\n\nCopyright © Ashly Dev 2026. Todos los derechos reservados.\n\nContacto: ashlydev99@gmail.com</string>
+    
+    <!-- Notificación -->
+    <string name="notification_channel_name">Monitoreo de Red</string>
+    <string name="notification_channel_desc">Muestra información de la red móvil en tiempo real</string>
+    
+    <!-- Permisos -->
+    <string name="permission_location_required">Se requiere acceso a ubicación para detectar celdas</string>
+    <string name="permission_phone_required">Se requiere acceso al teléfono para leer información de red</string>
+</resources>

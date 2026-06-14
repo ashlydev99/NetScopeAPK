@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_cells"
+            android:icon="@drawable/ic_cells"
+            android:title="Celdas" />
+        
+        <item
+            android:id="@+id/nav_speed"
+            android:icon="@drawable/ic_speed"
+            android:title="Velocímetro" />
+        
+        <item
+            android:id="@+id/nav_compass"
+            android:icon="@drawable/ic_compass"
+            android:title="Brújula" />
+        
+        <item
+            android:id="@+id/nav_ar"
+            android:icon="@drawable/ic_ar"
+            android:title="Realidad Aumentada" />
+        
+        <item
+            android:id="@+id/nav_dualsim"
+            android:icon="@drawable/ic_sim"
+            android:title="Dual SIM" />
+        
+        <item
+            android:id="@+id/nav_netmode"
+            android:icon="@drawable/ic_network_mode"
+            android:title="Modo de Red" />
+        
+        <item
+            android:id="@+id/nav_portscan"
+            android:icon="@drawable/ic_port_scan"
+            android:title="Escáner de Puertos" />
+    </group>
+    
+    <group>
+        <item
+            android:id="@+id/nav_settings"
+            android:icon="@drawable/ic_settings"
+            android:title="Ajustes" />
+        
+        <item
+            android:id="@+id/nav_about"
+            android:icon="@drawable/ic_about"
+            android:title="Acerca de" />
+    </group>
+</menu>
