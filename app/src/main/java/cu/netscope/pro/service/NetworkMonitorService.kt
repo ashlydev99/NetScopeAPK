@@ -237,7 +237,6 @@ class NetworkMonitorService : LifecycleService() {
                 cell.cid = cellInfo.cellIdentity.ci.toString()
                 cell.tac = cellInfo.cellIdentity.tac.toString()
                 cell.pci = cellInfo.cellIdentity.pci.toString()
-                // Obtener banda real
                 cell.band = try {
                     val bands = cellInfo.cellIdentity.bands
                     if (bands != null && bands.isNotEmpty()) {
