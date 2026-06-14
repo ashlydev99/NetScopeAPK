@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.RadioGroup
 import androidx.fragment.app.Fragment
+import cu.netscope.pro.R
 import cu.netscope.pro.databinding.FragmentSettingsBinding
 
 class SettingsFragment : Fragment() {
