@@ -108,13 +108,11 @@ class NetworkMonitorService : LifecycleService() {
             this, 0, stopIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-
         val contentIntent = Intent(this, MainActivity::class.java)
         val contentPendingIntent = PendingIntent.getActivity(
             this, 0, contentIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("NetScope Pro")
             .setContentText(info)
@@ -129,7 +127,6 @@ class NetworkMonitorService : LifecycleService() {
     @Suppress("DEPRECATION")
     private fun setupTelephonyMonitoring() {
         telephonyManager = getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
-
         phoneStateListener = object : PhoneStateListener() {
             override fun onSignalStrengthsChanged(signalStrength: SignalStrength) {
                 updateNetworkState()
@@ -141,7 +138,6 @@ class NetworkMonitorService : LifecycleService() {
                 updateNetworkState()
             }
         }
-
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE)
             == PackageManager.PERMISSION_GRANTED) {
             telephonyManager?.listen(
@@ -158,7 +154,6 @@ class NetworkMonitorService : LifecycleService() {
         lastRxBytes = TrafficStats.getTotalRxBytes()
         lastTxBytes = TrafficStats.getTotalTxBytes()
         lastUpdateTime = System.currentTimeMillis()
-
         monitorRunnable = object : Runnable {
             override fun run() {
                 updateSpeedAndNotify()
@@ -173,19 +168,14 @@ class NetworkMonitorService : LifecycleService() {
         val currentTxBytes = TrafficStats.getTotalTxBytes()
         val currentTime = System.currentTimeMillis()
         val timeDelta = (currentTime - lastUpdateTime) / 1000f
-
         if (timeDelta > 0) {
             val rxSpeed = ((currentRxBytes - lastRxBytes) * 8f) / timeDelta
             val txSpeed = ((currentTxBytes - lastTxBytes) * 8f) / timeDelta
             val speedMbps = (rxSpeed + txSpeed) / 1_000_000f
-
             synchronized(speedHistory) {
                 speedHistory.add(speedMbps)
-                if (speedHistory.size > maxSpeedHistory) {
-                    speedHistory.removeAt(0)
-                }
+                if (speedHistory.size > maxSpeedHistory) speedHistory.removeAt(0)
             }
-
             val state = currentNetworkState.get()
             state.downloadSpeedBps = rxSpeed
             state.uploadSpeedBps = txSpeed
@@ -193,7 +183,6 @@ class NetworkMonitorService : LifecycleService() {
             currentNetworkState.set(state)
             networkStateListener?.invoke(state)
         }
-
         lastRxBytes = currentRxBytes
         lastTxBytes = currentTxBytes
         lastUpdateTime = currentTime
@@ -203,21 +192,17 @@ class NetworkMonitorService : LifecycleService() {
     private fun updateNetworkState() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
             != PackageManager.PERMISSION_GRANTED) return
-
         val tm = telephonyManager ?: return
-        
         val state = NetworkState()
         state.networkType = getNetworkTypeString(tm.dataNetworkType)
         state.networkGeneration = getNetworkGeneration(tm.dataNetworkType)
         state.operatorName = tm.networkOperatorName ?: "Desconocido"
         state.mccMnc = tm.networkOperator ?: ""
         state.isRoaming = tm.isNetworkRoaming
-
         val allCells = tm.allCellInfo
         if (allCells != null && allCells.isNotEmpty()) {
             state.cells = allCells.mapNotNull { parseCellInfo(it) }
         }
-
         currentNetworkState.set(state)
         networkStateListener?.invoke(state)
     }
@@ -226,65 +211,60 @@ class NetworkMonitorService : LifecycleService() {
         val cell = CellInfo()
         cell.isRegistered = cellInfo.isRegistered
 
-        when (cellInfo) {
-            is android.telephony.CellInfoLte -> {
-                cell.type = "LTE"
-                cell.dbm = cellInfo.cellSignalStrength.dbm
-                cell.tac = cellInfo.cellIdentity.tac.toString()
-                cell.cid = cellInfo.cellIdentity.ci.toString()
-                cell.pci = cellInfo.cellIdentity.pci.toString()
-                
-                // Banda LTE
-                cell.band = try {
-                    cellInfo.cellIdentity.bands?.firstOrNull()?.let { "B$it" } ?: "?"
-                } catch (e: Exception) { "?" }
-                
-                // Frecuencia EARFCN
-                cell.frequency = try {
-                    cellInfo.cellIdentity.earfcn?.toString() ?: "?"
-                } catch (e: Exception) { "?" }
+        try {
+            when (cellInfo) {
+                is android.telephony.CellInfoLte -> {
+                    cell.type = "LTE"
+                    cell.dbm = cellInfo.cellSignalStrength.dbm
+                    cell.tac = cellInfo.cellIdentity.tac.toString()
+                    cell.cid = cellInfo.cellIdentity.ci.toString()
+                    cell.pci = cellInfo.cellIdentity.pci.toString()
+                    
+                    // Banda LTE - con manejo seguro
+                    try {
+                        val bands = cellInfo.cellIdentity.bands
+                        cell.band = if (bands != null && bands.isNotEmpty()) "B${bands[0]}" else "?"
+                    } catch (e: Exception) {
+                        cell.band = "?"
+                    }
+                    
+                    // EARFCN
+                    try {
+                        cell.frequency = cellInfo.cellIdentity.earfcn?.toString() ?: "?"
+                    } catch (e: Exception) {
+                        cell.frequency = "?"
+                    }
+                    
+                    Log.d(TAG, "LTE: dBm=${cell.dbm}, banda=${cell.band}, CID=${cell.cid}, PCI=${cell.pci}")
+                }
+                is android.telephony.CellInfoWcdma -> {
+                    cell.type = "WCDMA"
+                    cell.dbm = cellInfo.cellSignalStrength.dbm
+                    cell.cid = cellInfo.cellIdentity.cid?.toString() ?: "?"
+                    cell.lac = cellInfo.cellIdentity.lac?.toString() ?: "?"
+                    cell.band = "?"
+                    Log.d(TAG, "WCDMA: dBm=${cell.dbm}, CID=${cell.cid}, LAC=${cell.lac}")
+                }
+                is android.telephony.CellInfoGsm -> {
+                    cell.type = "GSM"
+                    cell.dbm = cellInfo.cellSignalStrength.dbm
+                    cell.cid = cellInfo.cellIdentity.cid.toString()
+                    cell.lac = cellInfo.cellIdentity.lac.toString()
+                    cell.bsic = cellInfo.cellIdentity.bsic.toString()
+                    cell.band = "?"
+                    Log.d(TAG, "GSM: dBm=${cell.dbm}, CID=${cell.cid}, LAC=${cell.lac}, BSIC=${cell.bsic}")
+                }
+                else -> {
+                    cell.type = "Otro"
+                    cell.dbm = -1
+                    cell.band = "?"
+                }
             }
-            is android.telephony.CellInfoWcdma -> {
-                cell.type = "WCDMA"
-                cell.dbm = cellInfo.cellSignalStrength.dbm
-                cell.cid = cellInfo.cellIdentity.cid?.toString() ?: "?"
-                cell.lac = cellInfo.cellIdentity.lac?.toString() ?: "?"
-                cell.band = try {
-                    cellInfo.cellIdentity.uarfcn?.let { uarfcn ->
-                        // Estimar banda WCDMA por UARFCN
-                        when {
-                            uarfcn in 10562..10838 -> "B1"
-                            uarfcn in 9662..9938 -> "B2"
-                            uarfcn in 1162..1513 -> "B5"
-                            uarfcn in 2937..3088 -> "B8"
-                            else -> "?"
-                        }
-                    } ?: "?"
-                } catch (e: Exception) { "?" }
-            }
-            is android.telephony.CellInfoGsm -> {
-                cell.type = "GSM"
-                cell.dbm = cellInfo.cellSignalStrength.dbm
-                cell.cid = cellInfo.cellIdentity.cid.toString()
-                cell.lac = cellInfo.cellIdentity.lac.toString()
-                cell.bsic = cellInfo.cellIdentity.bsic.toString()
-                cell.band = try {
-                    cellInfo.cellIdentity.arfcn?.let { arfcn ->
-                        // Estimar banda GSM por ARFCN
-                        when {
-                            arfcn in 1..124 -> "GSM900"
-                            arfcn in 512..885 -> "GSM1800"
-                            arfcn in 128..251 -> "GSM850"
-                            else -> "?"
-                        }
-                    } ?: "?"
-                } catch (e: Exception) { "?" }
-            }
-            else -> {
-                cell.type = "Otro"
-                cell.dbm = -1
-                cell.band = "?"
-            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error parseando celda: ${e.message}")
+            cell.type = "Error"
+            cell.dbm = -1
+            cell.band = "?"
         }
 
         return cell
