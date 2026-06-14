@@ -36,7 +36,9 @@ class CellsFragment : Fragment() {
 
     private fun setupRecyclerView() {
         cellAdapter = CellAdapter { cell ->
-            showCellDetailDialog(cell)
+            try {
+                showCellDetailDialog(cell)
+            } catch (e: Exception) { }
         }
         
         binding.recyclerCells.apply {
@@ -50,24 +52,27 @@ class CellsFragment : Fragment() {
     private fun observeNetworkState() {
         NetworkMonitorService.networkStateListener = { state ->
             try {
-                updateUI(state)
-            } catch (e: Exception) {
-                // Evitar crash si el binding no está listo
-            }
+                if (_binding != null && isAdded) {
+                    updateUI(state)
+                }
+            } catch (e: Exception) { }
         }
     }
 
     private fun updateUI(state: NetworkState) {
-        binding.textOperatorName.text = state.operatorName
-        binding.textNetworkGen.text = state.networkGeneration
-        binding.textNetworkType.text = state.networkType
+        // Operador y tipo de red
+        binding.textOperatorName.text = state.operatorName ?: "Buscando..."
+        binding.textNetworkGen.text = state.networkGeneration ?: "?"
+        binding.textNetworkType.text = state.networkType ?: "..."
+
+        // Buscar la celda conectada (isRegistered = true)
+        val connectedCell = state.cells.firstOrNull { it.isRegistered }
         
-        val primaryCell = state.primaryCell
-        if (primaryCell != null && primaryCell.dbm < 0) {
-            binding.textPrimaryDbm.text = "${primaryCell.dbm} dBm"
-            binding.textPrimaryBand.text = primaryCell.band
+        if (connectedCell != null && connectedCell.dbm != null && connectedCell.dbm < 0) {
+            binding.textPrimaryDbm.text = "${connectedCell.dbm} dBm"
+            binding.textPrimaryBand.text = connectedCell.band ?: "?"
             
-            val signalLevel = primaryCell.signalLevel
+            val signalLevel = connectedCell.signalLevel
             binding.textSignalLevel.text = when (signalLevel) {
                 5 -> "Excelente"
                 4 -> "Buena"
@@ -94,11 +99,13 @@ class CellsFragment : Fragment() {
             binding.textPrimaryDbm.setTextColor(0xFF888888.toInt())
         }
 
-        val allCells = state.cells.sortedWith(compareByDescending<CellInfo> { it.isRegistered }
-            .thenByDescending { it.dbm })
-        
-        cellAdapter.submitList(allCells)
-        binding.textCellCount.text = "${allCells.size} celdas detectadas"
+        // Lista de celdas
+        try {
+            val allCells = state.cells.sortedWith(compareByDescending<CellInfo> { it.isRegistered }
+                .thenByDescending { it.dbm ?: -200 })
+            cellAdapter.submitList(allCells)
+            binding.textCellCount.text = "${allCells.size} celdas detectadas"
+        } catch (e: Exception) { }
     }
 
     private fun showCellDetailDialog(cell: CellInfo) {
@@ -106,40 +113,32 @@ class CellsFragment : Fragment() {
             val dialog = android.app.AlertDialog.Builder(requireContext())
                 .setTitle("Detalles de Celda ${cell.type}")
                 .setMessage(buildString {
-                    append("Tipo: ").append(cell.type).append("\n")
-                    append("Señal: ").append(cell.dbm).append(" dBm\n")
-                    if (cell.band.isNotEmpty() && cell.band != "?") {
+                    append("Tipo: ").append(cell.type ?: "?").append("\n")
+                    append("Señal: ").append(cell.dbm ?: "?").append(" dBm\n")
+                    if (cell.band != null && cell.band.isNotEmpty() && cell.band != "?") {
                         append("Banda: ").append(cell.band).append("\n")
                     }
-                    if (cell.tac.isNotEmpty() && cell.tac != "0") {
+                    if (cell.tac != null && cell.tac.isNotEmpty() && cell.tac != "0") {
                         append("TAC: ").append(cell.tac).append("\n")
                     }
-                    if (cell.cid.isNotEmpty() && cell.cid != "0") {
+                    if (cell.cid != null && cell.cid.isNotEmpty() && cell.cid != "0") {
                         append("CID: ").append(cell.cid).append("\n")
                     }
-                    if (cell.lac.isNotEmpty() && cell.lac != "0") {
+                    if (cell.lac != null && cell.lac.isNotEmpty() && cell.lac != "0") {
                         append("LAC: ").append(cell.lac).append("\n")
                     }
-                    if (cell.pci.isNotEmpty() && cell.pci != "0") {
+                    if (cell.pci != null && cell.pci.isNotEmpty() && cell.pci != "0") {
                         append("PCI: ").append(cell.pci).append("\n")
                     }
-                    if (cell.bsic.isNotEmpty() && cell.bsic != "0") {
+                    if (cell.bsic != null && cell.bsic.isNotEmpty() && cell.bsic != "0") {
                         append("BSIC: ").append(cell.bsic).append("\n")
-                    }
-                    if (cell.spectralEfficiency > 0) {
-                        append("Efic. Espectral: ")
-                        append(String.format("%.2f", cell.spectralEfficiency))
-                        append(" bps/Hz\n")
                     }
                     append("Conectado: ").append(if (cell.isConnected) "Sí" else "No")
                 })
                 .setPositiveButton("Cerrar", null)
                 .create()
-            
             dialog.show()
-        } catch (e: Exception) {
-            // Evitar crash si el contexto no es válido
-        }
+        } catch (e: Exception) { }
     }
 
     override fun onDestroyView() {
