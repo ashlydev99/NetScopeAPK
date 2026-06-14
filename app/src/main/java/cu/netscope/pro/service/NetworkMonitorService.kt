@@ -14,6 +14,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.telephony.*
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
@@ -44,6 +45,7 @@ class NetworkMonitorService : LifecycleService() {
         private const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "network_monitor_channel"
         const val ACTION_STOP = "cu.netscope.pro.STOP_SERVICE"
+        private const val TAG = "NetScopeService"
 
         var networkStateListener: ((NetworkState) -> Unit)? = null
 
@@ -66,10 +68,13 @@ class NetworkMonitorService : LifecycleService() {
 
     override fun onCreate() {
         super.onCreate()
+        Log.d(TAG, "Servicio creado")
         createNotificationChannel()
         setupTelephonyMonitoring()
         startSpeedMonitoring()
         startForeground(NOTIFICATION_ID, buildNotification("Iniciando..."))
+        // Forzar primera actualización
+        monitorHandler?.postDelayed({ updateNetworkState() }, 500)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -127,15 +132,19 @@ class NetworkMonitorService : LifecycleService() {
     @Suppress("DEPRECATION")
     private fun setupTelephonyMonitoring() {
         telephonyManager = getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+        Log.d(TAG, "TelephonyManager inicializado")
 
         phoneStateListener = object : PhoneStateListener() {
             override fun onSignalStrengthsChanged(signalStrength: SignalStrength) {
+                Log.d(TAG, "onSignalStrengthsChanged")
                 updateNetworkState()
             }
             override fun onCellInfoChanged(cellInfo: MutableList<android.telephony.CellInfo>) {
+                Log.d(TAG, "onCellInfoChanged: ${cellInfo.size} celdas")
                 updateNetworkState()
             }
             override fun onDisplayInfoChanged(telephonyDisplayInfo: TelephonyDisplayInfo) {
+                Log.d(TAG, "onDisplayInfoChanged")
                 updateNetworkState()
             }
         }
@@ -148,6 +157,9 @@ class NetworkMonitorService : LifecycleService() {
                 PhoneStateListener.LISTEN_CELL_INFO or
                 PhoneStateListener.LISTEN_DISPLAY_INFO_CHANGED
             )
+            Log.d(TAG, "PhoneStateListener registrado")
+        } else {
+            Log.e(TAG, "Permiso READ_PHONE_STATE no concedido")
         }
     }
 
@@ -199,31 +211,46 @@ class NetworkMonitorService : LifecycleService() {
     }
 
     private fun updateNetworkState() {
+        Log.d(TAG, "updateNetworkState llamado")
+        
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-            != PackageManager.PERMISSION_GRANTED) return
+            != PackageManager.PERMISSION_GRANTED) {
+            Log.e(TAG, "Permiso ACCESS_FINE_LOCATION no concedido")
+            return
+        }
 
-        val tm = telephonyManager ?: return
+        val tm = telephonyManager ?: run {
+            Log.e(TAG, "TelephonyManager es null")
+            return
+        }
+        
         val state = NetworkState()
-
         state.networkType = getNetworkTypeString(tm.dataNetworkType)
         state.networkGeneration = getNetworkGeneration(tm.dataNetworkType)
         state.operatorName = tm.networkOperatorName ?: "Desconocido"
         state.mccMnc = tm.networkOperator ?: ""
         state.isRoaming = tm.isNetworkRoaming
 
+        Log.d(TAG, "Operador: ${state.operatorName}, Red: ${state.networkType}, Gen: ${state.networkGeneration}")
+
         val allCells = tm.allCellInfo
         if (allCells != null && allCells.isNotEmpty()) {
+            Log.d(TAG, "Celdas detectadas: ${allCells.size}")
             state.cells = allCells.mapNotNull { cellInfo ->
                 parseCellInfo(cellInfo)
             }
             val primaryCell = allCells.firstOrNull { it.isRegistered }
             if (primaryCell != null) {
                 state.primaryCell = parseCellInfo(primaryCell)
+                Log.d(TAG, "Celda primaria: ${state.primaryCell?.type} dBm=${state.primaryCell?.dbm}")
             }
+        } else {
+            Log.w(TAG, "No se detectaron celdas")
         }
 
         currentNetworkState.set(state)
         networkStateListener?.invoke(state)
+        Log.d(TAG, "Estado actualizado y notificado")
     }
 
     private fun parseCellInfo(cellInfo: android.telephony.CellInfo): CellInfo {
@@ -239,16 +266,8 @@ class NetworkMonitorService : LifecycleService() {
                 cell.pci = cellInfo.cellIdentity.pci.toString()
                 cell.band = try {
                     val bands = cellInfo.cellIdentity.bands
-                    if (bands != null && bands.isNotEmpty()) {
-                        "B${bands[0]}"
-                    } else {
-                        "?"
-                    }
-                } catch (e: Exception) {
-                    "?"
-                }
-                cell.estimatedDistance = DistanceCalculator.estimateDistance(cell.dbm, 3)
-                cell.spectralEfficiency = SpectralEfficiencyCalculator.calculateLTE(cell.dbm, 3)
+                    if (bands != null && bands.isNotEmpty()) "B${bands[0]}" else "?"
+                } catch (e: Exception) { "?" }
             }
             is android.telephony.CellInfoWcdma -> {
                 cell.type = "WCDMA"
@@ -256,7 +275,6 @@ class NetworkMonitorService : LifecycleService() {
                 cell.cid = cellInfo.cellIdentity.cid?.toString() ?: "?"
                 cell.lac = cellInfo.cellIdentity.lac?.toString() ?: "?"
                 cell.band = "?"
-                cell.estimatedDistance = DistanceCalculator.estimateDistance(cell.dbm, 1)
             }
             is android.telephony.CellInfoGsm -> {
                 cell.type = "GSM"
@@ -265,7 +283,6 @@ class NetworkMonitorService : LifecycleService() {
                 cell.lac = cellInfo.cellIdentity.lac.toString()
                 cell.band = "?"
                 cell.bsic = cellInfo.cellIdentity.bsic.toString()
-                cell.estimatedDistance = DistanceCalculator.estimateDistance(cell.dbm, 0)
             }
             else -> {
                 cell.type = "Otro"
@@ -278,34 +295,27 @@ class NetworkMonitorService : LifecycleService() {
 
     private fun getNetworkTypeString(networkType: Int): String {
         return when (networkType) {
-            TelephonyManager.NETWORK_TYPE_GPRS -> "GPRS"
-            TelephonyManager.NETWORK_TYPE_EDGE -> "EDGE"
+            TelephonyManager.NETWORK_TYPE_LTE -> "LTE"
             TelephonyManager.NETWORK_TYPE_UMTS -> "UMTS"
             TelephonyManager.NETWORK_TYPE_HSDPA -> "HSDPA"
             TelephonyManager.NETWORK_TYPE_HSUPA -> "HSUPA"
             TelephonyManager.NETWORK_TYPE_HSPA -> "HSPA"
-            TelephonyManager.NETWORK_TYPE_CDMA -> "CDMA"
-            TelephonyManager.NETWORK_TYPE_EVDO_0 -> "EVDO Rev. 0"
-            TelephonyManager.NETWORK_TYPE_EVDO_A -> "EVDO Rev. A"
-            TelephonyManager.NETWORK_TYPE_EVDO_B -> "EVDO Rev. B"
-            TelephonyManager.NETWORK_TYPE_1xRTT -> "1xRTT"
-            TelephonyManager.NETWORK_TYPE_LTE -> "LTE"
-            TelephonyManager.NETWORK_TYPE_EHRPD -> "eHRPD"
             TelephonyManager.NETWORK_TYPE_HSPAP -> "HSPA+"
-            TelephonyManager.NETWORK_TYPE_IWLAN -> "IWLAN"
+            TelephonyManager.NETWORK_TYPE_GSM -> "GSM"
+            TelephonyManager.NETWORK_TYPE_GPRS -> "GPRS"
+            TelephonyManager.NETWORK_TYPE_EDGE -> "EDGE"
             else -> "Desconocido"
         }
     }
 
     private fun getNetworkGeneration(networkType: Int): String {
         return when (networkType) {
-            TelephonyManager.NETWORK_TYPE_GPRS, TelephonyManager.NETWORK_TYPE_EDGE,
-            TelephonyManager.NETWORK_TYPE_CDMA, TelephonyManager.NETWORK_TYPE_1xRTT -> "2G"
-            TelephonyManager.NETWORK_TYPE_UMTS, TelephonyManager.NETWORK_TYPE_EVDO_0,
-            TelephonyManager.NETWORK_TYPE_EVDO_A, TelephonyManager.NETWORK_TYPE_EVDO_B -> "3G"
-            TelephonyManager.NETWORK_TYPE_HSDPA, TelephonyManager.NETWORK_TYPE_HSUPA,
-            TelephonyManager.NETWORK_TYPE_HSPA, TelephonyManager.NETWORK_TYPE_HSPAP -> "3.5G"
-            TelephonyManager.NETWORK_TYPE_LTE, TelephonyManager.NETWORK_TYPE_EHRPD -> "4G"
+            TelephonyManager.NETWORK_TYPE_LTE -> "4G"
+            TelephonyManager.NETWORK_TYPE_UMTS, TelephonyManager.NETWORK_TYPE_HSDPA,
+            TelephonyManager.NETWORK_TYPE_HSUPA, TelephonyManager.NETWORK_TYPE_HSPA,
+            TelephonyManager.NETWORK_TYPE_HSPAP -> "3G"
+            TelephonyManager.NETWORK_TYPE_GSM, TelephonyManager.NETWORK_TYPE_GPRS,
+            TelephonyManager.NETWORK_TYPE_EDGE -> "2G"
             else -> "?"
         }
     }
@@ -313,18 +323,7 @@ class NetworkMonitorService : LifecycleService() {
     private fun updateNotification() {
         val state = currentNetworkState.get()
         val primaryCell = state.primaryCell
-
-        val info = buildString {
-            append(state.operatorName)
-            append(" | ")
-            append(state.networkGeneration)
-            append(" | ")
-            append(primaryCell?.band ?: "?")
-            append(" | ")
-            append(primaryCell?.dbm ?: "?")
-            append(" dBm")
-        }
-
+        val info = "${state.operatorName} | ${state.networkGeneration} | ${primaryCell?.band ?: "?"} | ${primaryCell?.dbm ?: "?"} dBm"
         val notification = buildNotification(info)
         val notificationManager = getSystemService(NotificationManager::class.java)
         notificationManager.notify(NOTIFICATION_ID, notification)
