@@ -18,7 +18,6 @@ class CellsFragment : Fragment() {
     private val binding get() = _binding!!
     
     private lateinit var cellAdapter: CellAdapter
-    private var allCells: List<CellInfo> = emptyList()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -50,7 +49,11 @@ class CellsFragment : Fragment() {
 
     private fun observeNetworkState() {
         NetworkMonitorService.networkStateListener = { state ->
-            updateUI(state)
+            try {
+                updateUI(state)
+            } catch (e: Exception) {
+                // Evitar crash si el binding no está listo
+            }
         }
     }
 
@@ -91,7 +94,7 @@ class CellsFragment : Fragment() {
             binding.textPrimaryDbm.setTextColor(0xFF888888.toInt())
         }
 
-        allCells = state.cells.sortedWith(compareByDescending<CellInfo> { it.isRegistered }
+        val allCells = state.cells.sortedWith(compareByDescending<CellInfo> { it.isRegistered }
             .thenByDescending { it.dbm })
         
         cellAdapter.submitList(allCells)
@@ -99,40 +102,44 @@ class CellsFragment : Fragment() {
     }
 
     private fun showCellDetailDialog(cell: CellInfo) {
-        val dialog = android.app.AlertDialog.Builder(requireContext())
-            .setTitle("Detalles de Celda ${cell.type}")
-            .setMessage(buildString {
-                append("Tipo: ").append(cell.type).append("\n")
-                append("Señal: ").append(cell.dbm).append(" dBm\n")
-                if (cell.band.isNotEmpty() && cell.band != "?") {
-                    append("Banda: ").append(cell.band).append("\n")
-                }
-                if (cell.tac.isNotEmpty() && cell.tac != "0") {
-                    append("TAC: ").append(cell.tac).append("\n")
-                }
-                if (cell.cid.isNotEmpty() && cell.cid != "0") {
-                    append("CID: ").append(cell.cid).append("\n")
-                }
-                if (cell.lac.isNotEmpty() && cell.lac != "0") {
-                    append("LAC: ").append(cell.lac).append("\n")
-                }
-                if (cell.pci.isNotEmpty() && cell.pci != "0") {
-                    append("PCI: ").append(cell.pci).append("\n")
-                }
-                if (cell.bsic.isNotEmpty() && cell.bsic != "0") {
-                    append("BSIC: ").append(cell.bsic).append("\n")
-                }
-                if (cell.spectralEfficiency > 0) {
-                    append("Efic. Espectral: ")
-                    append(String.format("%.2f", cell.spectralEfficiency))
-                    append(" bps/Hz\n")
-                }
-                append("Conectado: ").append(if (cell.isConnected) "Sí" else "No")
-            })
-            .setPositiveButton("Cerrar", null)
-            .create()
-        
-        dialog.show()
+        try {
+            val dialog = android.app.AlertDialog.Builder(requireContext())
+                .setTitle("Detalles de Celda ${cell.type}")
+                .setMessage(buildString {
+                    append("Tipo: ").append(cell.type).append("\n")
+                    append("Señal: ").append(cell.dbm).append(" dBm\n")
+                    if (cell.band.isNotEmpty() && cell.band != "?") {
+                        append("Banda: ").append(cell.band).append("\n")
+                    }
+                    if (cell.tac.isNotEmpty() && cell.tac != "0") {
+                        append("TAC: ").append(cell.tac).append("\n")
+                    }
+                    if (cell.cid.isNotEmpty() && cell.cid != "0") {
+                        append("CID: ").append(cell.cid).append("\n")
+                    }
+                    if (cell.lac.isNotEmpty() && cell.lac != "0") {
+                        append("LAC: ").append(cell.lac).append("\n")
+                    }
+                    if (cell.pci.isNotEmpty() && cell.pci != "0") {
+                        append("PCI: ").append(cell.pci).append("\n")
+                    }
+                    if (cell.bsic.isNotEmpty() && cell.bsic != "0") {
+                        append("BSIC: ").append(cell.bsic).append("\n")
+                    }
+                    if (cell.spectralEfficiency > 0) {
+                        append("Efic. Espectral: ")
+                        append(String.format("%.2f", cell.spectralEfficiency))
+                        append(" bps/Hz\n")
+                    }
+                    append("Conectado: ").append(if (cell.isConnected) "Sí" else "No")
+                })
+                .setPositiveButton("Cerrar", null)
+                .create()
+            
+            dialog.show()
+        } catch (e: Exception) {
+            // Evitar crash si el contexto no es válido
+        }
     }
 
     override fun onDestroyView() {
