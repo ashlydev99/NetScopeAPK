@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import cu.netscope.pro.databinding.ActivityMainBinding
@@ -38,6 +39,10 @@ class MainActivity : AppCompatActivity() {
                 showCellsFragment()
             }
         }
+
+        binding.btnInfo.setOnClickListener {
+            showAboutDialog()
+        }
     }
 
     private fun showCellsFragment() {
@@ -58,6 +63,19 @@ class MainActivity : AppCompatActivity() {
             .setCustomAnimations(0, 0, 0, 0)
             .replace(R.id.fragment_container, SpeedMeterFragment())
             .commit()
+    }
+
+    private fun showAboutDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Acerca de NetScope Pro")
+            .setMessage(
+                "Creado con amor para la comunidad.\n\n" +
+                "Desarrollador: Ashly Dev\n\n" +
+                "Copyright © Ashly Dev 2026. Todos los derechos reservados.\n\n" +
+                "Contacto: ashlydev99@gmail.com"
+            )
+            .setPositiveButton("Cerrar", null)
+            .show()
     }
 
     private fun requestPermissions() {
