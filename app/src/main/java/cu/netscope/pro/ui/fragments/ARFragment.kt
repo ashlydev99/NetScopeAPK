@@ -12,14 +12,11 @@ import android.widget.TextView
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.lifecycleScope
 import cu.netscope.pro.data.model.NetworkState
 import cu.netscope.pro.databinding.FragmentArBinding
 import cu.netscope.pro.service.NetworkMonitorService
-import kotlinx.coroutines.launch
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -55,7 +52,6 @@ class ARFragment : Fragment() {
         ) {
             startCamera()
         } else {
-            // Solicitar permiso
             requestPermissions(
                 arrayOf(Manifest.permission.CAMERA),
                 100
@@ -98,7 +94,6 @@ class ARFragment : Fragment() {
                     preview
                 )
             } catch (e: Exception) {
-                // Cámara no disponible
                 binding.textArStatus.text = "Cámara no disponible"
                 binding.textArStatus.visibility = View.VISIBLE
             }
@@ -113,12 +108,13 @@ class ARFragment : Fragment() {
 
     private fun updateOverlay(state: NetworkState) {
         // Limpiar overlays anteriores
-        overlayViews.forEach { it.removeFromParent() }
+        overlayViews.forEach { 
+            (it.parent as? ViewGroup)?.removeView(it) 
+        }
         overlayViews.clear()
         
         val primaryCell = state.primaryCell ?: return
         
-        // Crear overlay flotante con info de la celda
         val overlayContainer = binding.overlayContainer
         if (overlayContainer == null) return
         

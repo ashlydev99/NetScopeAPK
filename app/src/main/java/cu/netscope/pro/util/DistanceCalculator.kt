@@ -38,11 +38,12 @@ object DistanceCalculator {
         
         // Fórmula de Friis: PL = 20*log10(d) + 20*log10(f) + 32.45
         // Despejando d: d = 10^((PL - 20*log10(f) - 32.45) / 20)
-        val distance = 10f.pow((pathLoss - 20 * Math.log10(frequencyMHz.toDouble()) - 32.45) / 20)
+        val exponent = (pathLoss - 20 * Math.log10(frequencyMHz.toDouble()) - 32.45) / 20
+        val distance = Math.pow(10.0, exponent).toFloat()
         
         // Ajuste por entorno urbano (factor de corrección)
         val urbanFactor = 0.7f
         
-        return (distance.toFloat() * 1000 * urbanFactor) // Convertir km a metros
+        return (distance * 1000 * urbanFactor) // Convertir km a metros
     }
 }
