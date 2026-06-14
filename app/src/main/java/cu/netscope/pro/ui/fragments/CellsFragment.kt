@@ -36,11 +36,8 @@ class CellsFragment : Fragment() {
 
     private fun setupRecyclerView() {
         cellAdapter = CellAdapter { cell ->
-            try {
-                showCellDetailDialog(cell)
-            } catch (e: Exception) { }
+            showCellDetailDialog(cell)
         }
-        
         binding.recyclerCells.apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = cellAdapter
@@ -51,30 +48,25 @@ class CellsFragment : Fragment() {
 
     private fun observeNetworkState() {
         NetworkMonitorService.networkStateListener = { state ->
-            try {
-                if (_binding != null && isAdded) {
-                    updateUI(state)
-                }
-            } catch (e: Exception) { }
+            if (_binding != null && isAdded) {
+                updateUI(state)
+            }
         }
     }
 
     private fun updateUI(state: NetworkState) {
         binding.textOperatorName.text = state.operatorName ?: "Buscando..."
         binding.textNetworkGen.text = state.networkGeneration ?: "?"
-        binding.textNetworkType.text = state.networkType ?: "?"
+        binding.textNetworkType.text = state.networkType ?: "..."
 
-        // Usar primaryCell si existe, si no buscar en la lista
-        val connectedCell = state.primaryCell ?: state.cells.firstOrNull { it.isRegistered }
+        // Usar primaryCell directamente (como en la versión que funciona)
+        val primaryCell = state.primaryCell
         
-        val cellDbm = connectedCell?.dbm
-        val cellBand = connectedCell?.band
-        
-        if (connectedCell != null && cellDbm != null && cellDbm < 0) {
-            binding.textPrimaryDbm.text = "$cellDbm dBm"
-            binding.textPrimaryBand.text = cellBand ?: "?"
+        if (primaryCell != null && primaryCell.dbm != null && primaryCell.dbm < 0) {
+            binding.textPrimaryDbm.text = "${primaryCell.dbm} dBm"
+            binding.textPrimaryBand.text = primaryCell.band ?: "?"
             
-            val signalLevel = connectedCell.signalLevel
+            val signalLevel = primaryCell.signalLevel
             binding.textSignalLevel.text = when (signalLevel) {
                 5 -> "Excelente"
                 4 -> "Buena"
@@ -102,59 +94,40 @@ class CellsFragment : Fragment() {
             binding.textPrimaryDbm.setTextColor(0xFF888888.toInt())
         }
 
-        try {
-            val allCells = state.cells.sortedWith(compareByDescending<CellInfo> { it.isRegistered }
-                .thenByDescending { it.dbm ?: -200 })
-            cellAdapter.submitList(allCells)
-            binding.textCellCount.text = "${allCells.size} celdas detectadas"
-        } catch (e: Exception) { }
+        val allCells = state.cells.sortedWith(compareByDescending<CellInfo> { it.isRegistered }
+            .thenByDescending { it.dbm ?: -200 })
+        cellAdapter.submitList(allCells)
+        binding.textCellCount.text = "${allCells.size} celdas detectadas"
     }
 
     private fun showCellDetailDialog(cell: CellInfo) {
-        try {
-            val type = cell.type
-            val dbm = cell.dbm
-            val band = cell.band
-            val frequency = cell.frequency
-            val tac = cell.tac
-            val cid = cell.cid
-            val lac = cell.lac
-            val pci = cell.pci
-            val bsic = cell.bsic
-            val isConnected = cell.isConnected
-            
-            val dialog = android.app.AlertDialog.Builder(requireContext())
-                .setTitle("Detalles de Celda ${type ?: "?"}")
-                .setMessage(buildString {
-                    append("Tipo: ").append(type ?: "?").append("\n")
-                    append("Señal: ").append(dbm ?: "?").append(" dBm\n")
-                    if (band != null && band.isNotEmpty() && band != "?") {
-                        append("Banda: ").append(band).append("\n")
-                    }
-                    if (frequency != null && frequency.isNotEmpty() && frequency != "?") {
-                        append("Frecuencia: ").append(frequency).append("\n")
-                    }
-                    if (tac != null && tac.isNotEmpty() && tac != "0") {
-                        append("TAC: ").append(tac).append("\n")
-                    }
-                    if (cid != null && cid.isNotEmpty() && cid != "0") {
-                        append("CID: ").append(cid).append("\n")
-                    }
-                    if (lac != null && lac.isNotEmpty() && lac != "0") {
-                        append("LAC: ").append(lac).append("\n")
-                    }
-                    if (pci != null && pci.isNotEmpty() && pci != "0") {
-                        append("PCI: ").append(pci).append("\n")
-                    }
-                    if (bsic != null && bsic.isNotEmpty() && bsic != "0") {
-                        append("BSIC: ").append(bsic).append("\n")
-                    }
-                    append("Conectado: ").append(if (isConnected) "Sí" else "No")
-                })
-                .setPositiveButton("Cerrar", null)
-                .create()
-            dialog.show()
-        } catch (e: Exception) { }
+        val type = cell.type ?: "?"
+        val dbm = cell.dbm ?: 0
+        val band = cell.band ?: "?"
+        val frequency = cell.frequency ?: "?"
+        val tac = cell.tac ?: ""
+        val cid = cell.cid ?: ""
+        val lac = cell.lac ?: ""
+        val pci = cell.pci ?: ""
+        val bsic = cell.bsic ?: ""
+        
+        val dialog = android.app.AlertDialog.Builder(requireContext())
+            .setTitle("Detalles de Celda $type")
+            .setMessage(buildString {
+                append("Tipo: $type\n")
+                append("Señal: $dbm dBm\n")
+                if (band != "?" && band.isNotEmpty()) append("Banda: $band\n")
+                if (frequency != "?" && frequency.isNotEmpty()) append("Frecuencia/EARFCN: $frequency\n")
+                if (tac != "0" && tac.isNotEmpty()) append("TAC: $tac\n")
+                if (cid != "0" && cid.isNotEmpty()) append("CID: $cid\n")
+                if (lac != "0" && lac.isNotEmpty()) append("LAC: $lac\n")
+                if (pci != "0" && pci.isNotEmpty()) append("PCI: $pci\n")
+                if (bsic != "0" && bsic.isNotEmpty()) append("BSIC: $bsic\n")
+                append("Conectado: ${if (cell.isConnected) "Sí" else "No"}")
+            })
+            .setPositiveButton("Cerrar", null)
+            .create()
+        dialog.show()
     }
 
     override fun onDestroyView() {
