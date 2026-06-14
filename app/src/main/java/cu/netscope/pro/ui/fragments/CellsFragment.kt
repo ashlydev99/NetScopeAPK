@@ -62,11 +62,11 @@ class CellsFragment : Fragment() {
     private fun updateUI(state: NetworkState) {
         binding.textOperatorName.text = state.operatorName ?: "Buscando..."
         binding.textNetworkGen.text = state.networkGeneration ?: "?"
-        binding.textNetworkType.text = state.networkType ?: "..."
+        binding.textNetworkType.text = state.networkType ?: "?"
 
-        val connectedCell = state.cells.firstOrNull { it.isRegistered }
+        // Usar primaryCell si existe, si no buscar en la lista
+        val connectedCell = state.primaryCell ?: state.cells.firstOrNull { it.isRegistered }
         
-        // Variables locales para evitar smart cast
         val cellDbm = connectedCell?.dbm
         val cellBand = connectedCell?.band
         
@@ -112,7 +112,6 @@ class CellsFragment : Fragment() {
 
     private fun showCellDetailDialog(cell: CellInfo) {
         try {
-            // Variables locales para evitar smart cast
             val type = cell.type
             val dbm = cell.dbm
             val band = cell.band

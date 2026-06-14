@@ -199,10 +199,19 @@ class NetworkMonitorService : LifecycleService() {
         state.operatorName = tm.networkOperatorName ?: "Desconocido"
         state.mccMnc = tm.networkOperator ?: ""
         state.isRoaming = tm.isNetworkRoaming
+
         val allCells = tm.allCellInfo
         if (allCells != null && allCells.isNotEmpty()) {
             state.cells = allCells.mapNotNull { parseCellInfo(it) }
+            
+            // Buscar la celda registrada (conectada) y asignarla como primaryCell
+            val primaryCellInfo = allCells.firstOrNull { it.isRegistered }
+            if (primaryCellInfo != null) {
+                state.primaryCell = parseCellInfo(primaryCellInfo)
+                Log.d(TAG, "Celda primaria: ${state.primaryCell?.type} dBm=${state.primaryCell?.dbm} banda=${state.primaryCell?.band}")
+            }
         }
+
         currentNetworkState.set(state)
         networkStateListener?.invoke(state)
     }
@@ -219,23 +228,13 @@ class NetworkMonitorService : LifecycleService() {
                     cell.tac = cellInfo.cellIdentity.tac.toString()
                     cell.cid = cellInfo.cellIdentity.ci.toString()
                     cell.pci = cellInfo.cellIdentity.pci.toString()
-                    
-                    // Banda LTE - con manejo seguro
                     try {
                         val bands = cellInfo.cellIdentity.bands
                         cell.band = if (bands != null && bands.isNotEmpty()) "B${bands[0]}" else "?"
-                    } catch (e: Exception) {
-                        cell.band = "?"
-                    }
-                    
-                    // EARFCN
+                    } catch (e: Exception) { cell.band = "?" }
                     try {
                         cell.frequency = cellInfo.cellIdentity.earfcn?.toString() ?: "?"
-                    } catch (e: Exception) {
-                        cell.frequency = "?"
-                    }
-                    
-                    Log.d(TAG, "LTE: dBm=${cell.dbm}, banda=${cell.band}, CID=${cell.cid}, PCI=${cell.pci}")
+                    } catch (e: Exception) { cell.frequency = "?" }
                 }
                 is android.telephony.CellInfoWcdma -> {
                     cell.type = "WCDMA"
@@ -243,7 +242,6 @@ class NetworkMonitorService : LifecycleService() {
                     cell.cid = cellInfo.cellIdentity.cid?.toString() ?: "?"
                     cell.lac = cellInfo.cellIdentity.lac?.toString() ?: "?"
                     cell.band = "?"
-                    Log.d(TAG, "WCDMA: dBm=${cell.dbm}, CID=${cell.cid}, LAC=${cell.lac}")
                 }
                 is android.telephony.CellInfoGsm -> {
                     cell.type = "GSM"
@@ -252,7 +250,6 @@ class NetworkMonitorService : LifecycleService() {
                     cell.lac = cellInfo.cellIdentity.lac.toString()
                     cell.bsic = cellInfo.cellIdentity.bsic.toString()
                     cell.band = "?"
-                    Log.d(TAG, "GSM: dBm=${cell.dbm}, CID=${cell.cid}, LAC=${cell.lac}, BSIC=${cell.bsic}")
                 }
                 else -> {
                     cell.type = "Otro"
@@ -299,7 +296,7 @@ class NetworkMonitorService : LifecycleService() {
 
     private fun updateNotification() {
         val state = currentNetworkState.get()
-        val connectedCell = state.cells.firstOrNull { it.isRegistered }
+        val connectedCell = state.primaryCell ?: state.cells.firstOrNull { it.isRegistered }
         val info = "${state.operatorName} | ${state.networkGeneration} | ${connectedCell?.band ?: "?"} | ${connectedCell?.dbm ?: "?"} dBm"
         val notification = buildNotification(info)
         val notificationManager = getSystemService(NotificationManager::class.java)
