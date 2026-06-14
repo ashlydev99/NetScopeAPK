@@ -1,6 +1,5 @@
 name: 🔨 Build Debug APK (Manual)
 
-# Workflow de ejecución manual desde la pestaña "Actions" de GitHub
 on:
   workflow_dispatch:
     inputs:
@@ -32,7 +31,11 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # 3. Cache de Gradle para builds más rápidas
+      # 3. Configurar Android SDK
+      - name: 🤖 Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      # 4. Cache de Gradle para builds más rápidas
       - name: 🗂️ Cache de Gradle
         uses: actions/cache@v4
         with:
@@ -43,26 +46,30 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      # 4. Dar permisos de ejecución al gradlew
+      # 5. Generar Gradle Wrapper (crea gradlew y gradle-wrapper.jar automáticamente)
+      - name: 🔧 Generar Gradle Wrapper
+        run: gradle wrapper --gradle-version 8.2
+
+      # 6. Dar permisos de ejecución al gradlew generado
       - name: 🔑 Dar permisos a gradlew
         run: chmod +x ./gradlew
 
-      # 5. Actualizar versión en build.gradle.kts
+      # 7. Actualizar versión en build.gradle.kts
       - name: 📝 Actualizar versión
         run: |
           sed -i "s/versionName = \".*\"/versionName = \"${{ github.event.inputs.version_name }}\"/" app/build.gradle.kts
           sed -i "s/versionCode = .*/versionCode = ${{ github.event.inputs.version_code }}/" app/build.gradle.kts
 
-      # 6. Compilar APK Debug
+      # 8. Compilar APK Debug
       - name: 🔨 Compilar APK Debug
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug --stacktrace --no-daemon
 
-      # 7. Generar hash SHA256 del APK
+      # 9. Generar hash SHA256 del APK
       - name: 🔐 Generar SHA256
         run: |
           sha256sum app/build/outputs/apk/debug/app-debug.apk > app/build/outputs/apk/debug/app-debug.apk.sha256
 
-      # 8. Subir APK como artefacto
+      # 10. Subir APK como artefacto
       - name: 📤 Subir APK Debug
         uses: actions/upload-artifact@v4
         with:
@@ -73,7 +80,7 @@ jobs:
           compression-level: 6
           retention-days: 30
 
-      # 9. Mostrar resumen
+      # 11. Mostrar resumen
       - name: 📋 Resumen de compilación
         run: |
           echo "============================================"
