@@ -229,19 +229,10 @@ class NetworkMonitorService : LifecycleService() {
         val cell = CellInfo()
         cell.isRegistered = cellInfo.isRegistered
 
-        // Obtener dBm genérico usando el método correcto
-        cell.dbm = when (cellInfo) {
-            is android.telephony.CellInfoLte -> cellInfo.cellSignalStrength.dbm
-            is android.telephony.CellInfoWcdma -> cellInfo.cellSignalStrength.dbm
-            is android.telephony.CellInfoGsm -> cellInfo.cellSignalStrength.dbm
-            is android.telephony.CellInfoNr -> cellInfo.cellSignalStrength.dbm
-            is android.telephony.CellInfoTdscdma -> cellInfo.cellSignalStrength.dbm
-            else -> -1
-        }
-
         when (cellInfo) {
             is android.telephony.CellInfoLte -> {
                 cell.type = "LTE"
+                cell.dbm = cellInfo.cellSignalStrength.dbm
                 cell.cid = cellInfo.cellIdentity.ci.toString()
                 cell.tac = cellInfo.cellIdentity.tac.toString()
                 cell.pci = cellInfo.cellIdentity.pci.toString()
@@ -251,6 +242,7 @@ class NetworkMonitorService : LifecycleService() {
             }
             is android.telephony.CellInfoWcdma -> {
                 cell.type = "WCDMA"
+                cell.dbm = cellInfo.cellSignalStrength.dbm
                 cell.cid = cellInfo.cellIdentity.cid?.toString() ?: "?"
                 cell.lac = cellInfo.cellIdentity.lac?.toString() ?: "?"
                 cell.band = "?"
@@ -258,29 +250,16 @@ class NetworkMonitorService : LifecycleService() {
             }
             is android.telephony.CellInfoGsm -> {
                 cell.type = "GSM"
+                cell.dbm = cellInfo.cellSignalStrength.dbm
                 cell.cid = cellInfo.cellIdentity.cid.toString()
                 cell.lac = cellInfo.cellIdentity.lac.toString()
                 cell.band = "?"
                 cell.bsic = cellInfo.cellIdentity.bsic.toString()
                 cell.estimatedDistance = DistanceCalculator.estimateDistance(cell.dbm, 0)
             }
-            is android.telephony.CellInfoNr -> {
-                cell.type = "5G NR"
-                cell.cid = cellInfo.cellIdentity.nci?.toString() ?: "?"
-                cell.tac = cellInfo.cellIdentity.tac.toString()
-                cell.pci = cellInfo.cellIdentity.pci.toString()
-                cell.band = "?"
-                cell.estimatedDistance = DistanceCalculator.estimateDistance(cell.dbm, 78)
-                cell.spectralEfficiency = SpectralEfficiencyCalculator.calculateNR(cell.dbm, 78)
-            }
-            is android.telephony.CellInfoTdscdma -> {
-                cell.type = "TD-SCDMA"
-                cell.cid = cellInfo.cellIdentity.cid?.toString() ?: "?"
-                cell.lac = cellInfo.cellIdentity.lac?.toString() ?: "?"
-                cell.band = "?"
-            }
             else -> {
-                cell.type = "Desconocido"
+                cell.type = "Otro"
+                cell.dbm = -1
             }
         }
 
@@ -303,7 +282,6 @@ class NetworkMonitorService : LifecycleService() {
             TelephonyManager.NETWORK_TYPE_LTE -> "LTE"
             TelephonyManager.NETWORK_TYPE_EHRPD -> "eHRPD"
             TelephonyManager.NETWORK_TYPE_HSPAP -> "HSPA+"
-            TelephonyManager.NETWORK_TYPE_NR -> "5G NR"
             TelephonyManager.NETWORK_TYPE_IWLAN -> "IWLAN"
             else -> "Desconocido"
         }
@@ -318,7 +296,6 @@ class NetworkMonitorService : LifecycleService() {
             TelephonyManager.NETWORK_TYPE_HSDPA, TelephonyManager.NETWORK_TYPE_HSUPA,
             TelephonyManager.NETWORK_TYPE_HSPA, TelephonyManager.NETWORK_TYPE_HSPAP -> "3.5G"
             TelephonyManager.NETWORK_TYPE_LTE, TelephonyManager.NETWORK_TYPE_EHRPD -> "4G"
-            TelephonyManager.NETWORK_TYPE_NR -> "5G"
             else -> "?"
         }
     }
