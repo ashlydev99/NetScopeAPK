@@ -197,15 +197,6 @@ class NetworkMonitorService : LifecycleService() {
         updateNotification()
     }
 
-    @Suppress("DEPRECATION")
-    private fun getSignalDbm(signalStrength: SignalStrength): Int {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            signalStrength.dbm
-        } else {
-            -1
-        }
-    }
-
     private fun updateNetworkState() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
             != PackageManager.PERMISSION_GRANTED) return
@@ -238,51 +229,58 @@ class NetworkMonitorService : LifecycleService() {
         val cell = CellInfo()
         cell.isRegistered = cellInfo.isRegistered
 
+        // Obtener dBm genérico usando el método correcto
+        cell.dbm = when (cellInfo) {
+            is android.telephony.CellInfoLte -> cellInfo.cellSignalStrength.dbm
+            is android.telephony.CellInfoWcdma -> cellInfo.cellSignalStrength.dbm
+            is android.telephony.CellInfoGsm -> cellInfo.cellSignalStrength.dbm
+            is android.telephony.CellInfoNr -> cellInfo.cellSignalStrength.dbm
+            is android.telephony.CellInfoTdscdma -> cellInfo.cellSignalStrength.dbm
+            else -> -1
+        }
+
         when (cellInfo) {
             is android.telephony.CellInfoLte -> {
-                val identity = cellInfo.cellIdentity
                 cell.type = "LTE"
-                cell.mcc = if (identity.mccString != null) identity.mccString else ""
-                cell.mnc = if (identity.mncString != null) identity.mncString else ""
-                cell.tac = identity.tac.toString()
-                cell.cid = identity.ci.toString()
-                cell.pci = identity.pci.toString()
-                cell.dbm = cellInfo.cellSignalStrength.dbm
-                cell.timingAdvance = cellInfo.cellSignalStrength.timingAdvance
-                cell.estimatedDistance = DistanceCalculator.estimateDistance(cell.dbm, identity.bands?.firstOrNull() ?: 3)
-                cell.spectralEfficiency = SpectralEfficiencyCalculator.calculateLTE(cell.dbm, identity.bands?.firstOrNull() ?: 3)
+                cell.cid = cellInfo.cellIdentity.ci.toString()
+                cell.tac = cellInfo.cellIdentity.tac.toString()
+                cell.pci = cellInfo.cellIdentity.pci.toString()
+                cell.band = "?"
+                cell.estimatedDistance = DistanceCalculator.estimateDistance(cell.dbm, 3)
+                cell.spectralEfficiency = SpectralEfficiencyCalculator.calculateLTE(cell.dbm, 3)
             }
             is android.telephony.CellInfoWcdma -> {
-                val identity = cellInfo.cellIdentity
                 cell.type = "WCDMA"
-                cell.mcc = if (identity.mccString != null) identity.mccString else ""
-                cell.mnc = if (identity.mncString != null) identity.mncString else ""
-                cell.cid = identity.cid?.toString() ?: "?"
-                cell.lac = identity.lac?.toString() ?: "?"
-                cell.dbm = cellInfo.cellSignalStrength.dbm
+                cell.cid = cellInfo.cellIdentity.cid?.toString() ?: "?"
+                cell.lac = cellInfo.cellIdentity.lac?.toString() ?: "?"
+                cell.band = "?"
                 cell.estimatedDistance = DistanceCalculator.estimateDistance(cell.dbm, 1)
             }
             is android.telephony.CellInfoGsm -> {
-                val identity = cellInfo.cellIdentity
                 cell.type = "GSM"
-                cell.mcc = if (identity.mccString != null) identity.mccString else ""
-                cell.mnc = if (identity.mncString != null) identity.mncString else ""
-                cell.cid = identity.cid.toString()
-                cell.lac = identity.lac.toString()
-                cell.dbm = cellInfo.cellSignalStrength.dbm
+                cell.cid = cellInfo.cellIdentity.cid.toString()
+                cell.lac = cellInfo.cellIdentity.lac.toString()
+                cell.band = "?"
+                cell.bsic = cellInfo.cellIdentity.bsic.toString()
                 cell.estimatedDistance = DistanceCalculator.estimateDistance(cell.dbm, 0)
             }
             is android.telephony.CellInfoNr -> {
-                val identity = cellInfo.cellIdentity
                 cell.type = "5G NR"
-                cell.mcc = if (identity.mccString != null) identity.mccString else ""
-                cell.mnc = if (identity.mncString != null) identity.mncString else ""
-                cell.tac = identity.tac.toString()
-                cell.cid = identity.nci?.toString() ?: "?"
-                cell.pci = identity.pci.toString()
-                cell.dbm = cellInfo.cellSignalStrength.dbm
-                cell.estimatedDistance = DistanceCalculator.estimateDistance(cell.dbm, identity.bands?.firstOrNull() ?: 78)
-                cell.spectralEfficiency = SpectralEfficiencyCalculator.calculateNR(cell.dbm, identity.bands?.firstOrNull() ?: 78)
+                cell.cid = cellInfo.cellIdentity.nci?.toString() ?: "?"
+                cell.tac = cellInfo.cellIdentity.tac.toString()
+                cell.pci = cellInfo.cellIdentity.pci.toString()
+                cell.band = "?"
+                cell.estimatedDistance = DistanceCalculator.estimateDistance(cell.dbm, 78)
+                cell.spectralEfficiency = SpectralEfficiencyCalculator.calculateNR(cell.dbm, 78)
+            }
+            is android.telephony.CellInfoTdscdma -> {
+                cell.type = "TD-SCDMA"
+                cell.cid = cellInfo.cellIdentity.cid?.toString() ?: "?"
+                cell.lac = cellInfo.cellIdentity.lac?.toString() ?: "?"
+                cell.band = "?"
+            }
+            else -> {
+                cell.type = "Desconocido"
             }
         }
 
@@ -333,8 +331,6 @@ class NetworkMonitorService : LifecycleService() {
             append(state.operatorName)
             append(" | ")
             append(state.networkGeneration)
-            append(" ")
-            append(primaryCell?.band ?: "?")
             append(" | ")
             append(primaryCell?.dbm ?: "?")
             append(" dBm")
