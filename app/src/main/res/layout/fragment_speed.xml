@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical" android:layout_width="match_parent"
+    android:layout_height="match_parent" android:padding="12dp" android:background="@color/background">
+
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:cardBackgroundColor="@color/card" android:cardCornerRadius="8dp" android:padding="12dp">
+        <LinearLayout android:orientation="vertical" android:layout_width="match_parent" android:layout_height="wrap_content">
+            <TextView android:id="@+id/tvDownload" android:textColor="@color/text" android:text="DL: 0 kbps" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            <TextView android:id="@+id/tvUpload" android:textColor="@color/text" android:text="UL: 0 kbps" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <com.github.mikephil.charting.charts.LineChart
+        android:id="@+id/chart"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="12dp"
+        android:layout_weight="1"/>
+</LinearLayout>

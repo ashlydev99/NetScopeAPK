@@ -3,91 +3,51 @@ package cu.netscope.pro.ui.adapters
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.TextView
-import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import cu.netscope.pro.R
-import cu.netscope.pro.data.model.CellInfo
+import cu.netscope.pro.databinding.ItemCellBinding
+import cu.netscope.pro.model.CellInfoModel
 
 class CellAdapter(
-    private val onCellClick: (CellInfo) -> Unit
-) : ListAdapter<CellInfo, CellAdapter.CellViewHolder>(CellDiffCallback()) {
+    private var items: List<CellInfoModel>,
+    private val onClick: (CellInfoModel) -> Unit
+) : RecyclerView.Adapter<CellAdapter.VH>() {
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CellViewHolder {
-        val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_cell, parent, false)
-        return CellViewHolder(view)
-    }
-
-    override fun onBindViewHolder(holder: CellViewHolder, position: Int) {
-        try {
-            holder.bind(getItem(position))
-        } catch (e: Exception) { }
-    }
-
-    inner class CellViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        
-        fun bind(cell: CellInfo) {
-            val textType = itemView.findViewById<TextView>(R.id.text_cell_type)
-            val textBand = itemView.findViewById<TextView>(R.id.text_cell_band)
-            val textDbm = itemView.findViewById<TextView>(R.id.text_cell_dbm)
-            val textCid = itemView.findViewById<TextView>(R.id.text_cell_cid)
-            val textExtra = itemView.findViewById<TextView>(R.id.text_cell_extra)
-            val viewIndicator = itemView.findViewById<View>(R.id.view_signal_indicator)
-            val viewConnected = itemView.findViewById<View>(R.id.view_connected)
-
-            // Variables locales para evitar smart cast
-            val type = cell.type ?: "?"
-            val band = cell.band
-            val dbm = cell.dbm ?: 0
-            val cid = cell.cid
-            val pci = cell.pci
-            val spectralEff = cell.spectralEfficiency ?: 0f
-            val isConnected = cell.isConnected
-
-            textType?.text = type
-            textBand?.text = if (band != null && band != "?") band else ""
-            textDbm?.text = "$dbm dBm"
-            
-            val identifier = when {
-                cid != null && cid.isNotEmpty() && cid != "0" -> "CID: $cid"
-                pci != null && pci.isNotEmpty() && pci != "0" -> "PCI: $pci"
-                else -> ""
-            }
-            textCid?.text = identifier
-            
-            val extraInfo = if (spectralEff > 0) {
-                "${String.format("%.1f", spectralEff)} bps/Hz"
-            } else ""
-            textExtra?.text = extraInfo
-            
-            val signalColor = when {
-                dbm >= -75 -> 0xFF4CAF50.toInt()
-                dbm >= -85 -> 0xFF8BC34A.toInt()
-                dbm >= -95 -> 0xFFFFC107.toInt()
-                dbm >= -105 -> 0xFFFF9800.toInt()
-                dbm >= -115 -> 0xFFFF5722.toInt()
-                else -> 0xFFF44336.toInt()
-            }
-            viewIndicator?.setBackgroundColor(signalColor)
-            viewConnected?.visibility = if (isConnected) View.VISIBLE else View.GONE
-            
-            itemView.setOnClickListener {
-                try {
-                    onCellClick(cell)
-                } catch (e: Exception) { }
+    inner class VH(val binding: ItemCellBinding) : RecyclerView.ViewHolder(binding.root) {
+        init {
+            binding.root.setOnClickListener {
+                val pos = adapterPosition
+                if (pos != RecyclerView.NO_POSITION) {
+                    onClick(items[pos])
+                }
             }
         }
     }
 
-    private class CellDiffCallback : DiffUtil.ItemCallback<CellInfo>() {
-        override fun areItemsTheSame(oldItem: CellInfo, newItem: CellInfo): Boolean {
-            return oldItem.cid == newItem.cid && oldItem.type == newItem.type
-        }
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
+        val binding = ItemCellBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        return VH(binding)
+    }
 
-        override fun areContentsTheSame(oldItem: CellInfo, newItem: CellInfo): Boolean {
-            return oldItem == newItem
+    override fun onBindViewHolder(holder: VH, position: Int) {
+        val localItem = items[position]
+        holder.binding.tvCellType.text = localItem.type ?: "?"
+        val cid = localItem.cid?.toString() ?: "?"
+        val pci = localItem.pci?.toString() ?: "?"
+        val dbm = localItem.dbm?.let { "$it dBm" } ?: "?"
+        val band = localItem.band ?: "?"
+        holder.binding.tvCellInfo.text = "$cid / $pci / $dbm / $band"
+        holder.binding.tvSignalShort.text = dbm
+        if (localItem.isRegistered == true && position == 0) {
+            holder.binding.connectedDot.visibility = View.VISIBLE
+        } else {
+            holder.binding.connectedDot.visibility = View.GONE
         }
+    }
+
+    override fun getItemCount(): Int = items.size
+
+    fun update(newItems: List<CellInfoModel>) {
+        items = newItems
+        notifyDataSetChanged()
     }
 }

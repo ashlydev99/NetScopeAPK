@@ -1,100 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView 
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:layout_marginVertical="4dp"
-    app:cardBackgroundColor="#1E1E1E"
-    app:cardCornerRadius="6dp"
-    app:cardElevation="0dp"
-    android:foreground="?attr/selectableItemBackground">
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_margin="6dp" android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:cardBackgroundColor="@color/card" android:cardCornerRadius="6dp" android:padding="10dp">
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="12dp"
-        android:gravity="center_vertical">
-
-        <View
-            android:id="@+id/view_signal_indicator"
-            android:layout_width="4dp"
-            android:layout_height="48dp"
-            android:background="#4CAF50" />
-
-        <View
-            android:id="@+id/view_connected"
-            android:layout_width="8dp"
-            android:layout_height="8dp"
-            android:background="#4CAF50"
-            android:layout_marginStart="8dp"
-            android:visibility="gone" />
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:layout_marginStart="12dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/text_cell_type"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="LTE"
-                    android:textColor="#FFFFFF"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/text_cell_band"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text=""
-                    android:textColor="#B0B0B0"
-                    android:textSize="12sp"
-                    android:layout_marginStart="8dp" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/text_cell_dbm"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="..."
-                android:textColor="#FFFFFF"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:layout_marginTop="4dp" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_marginTop="2dp">
-
-                <TextView
-                    android:id="@+id/text_cell_cid"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text=""
-                    android:textColor="#888888"
-                    android:textSize="11sp" />
-
-                <TextView
-                    android:id="@+id/text_cell_extra"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text=""
-                    android:textColor="#888888"
-                    android:textSize="11sp"
-                    android:layout_marginStart="16dp" />
-            </LinearLayout>
+    <LinearLayout android:orientation="horizontal" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical">
+        <View android:id="@+id/connectedDot" android:layout_width="10dp" android:layout_height="10dp" android:layout_marginEnd="8dp" android:background="@color/green_light" android:visibility="gone"/>
+        <LinearLayout android:orientation="vertical" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content">
+            <TextView android:id="@+id/tvCellType" android:textColor="@color/text" android:text="LTE" android:textStyle="bold" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+            <TextView android:id="@+id/tvCellInfo" android:textColor="@color/text" android:text="CID / PCI / -95 dBm / B3" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
         </LinearLayout>
+        <TextView android:id="@+id/tvSignalShort" android:textColor="@color/text" android:text="-95 dBm" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
     </LinearLayout>
 </androidx.cardview.widget.CardView>

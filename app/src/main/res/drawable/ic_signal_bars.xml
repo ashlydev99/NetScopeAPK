@@ -1,5 +1,8 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp" android:height="24dp" android:viewportWidth="24"
     android:viewportHeight="24">
-    <path android:fillColor="#FFFFFF" android:pathData="M11 17h2v-6h-2v6zm0-8h2V7h-2v2zM12 2a10 10 0 100 20 10 10 0 000-20z"/>
+    <!-- barras ascendentes -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M2,20h2v-6H2v6zM6,20h2v-10H6v10zM10,20h2v-14h-2v14zM14,20h2v-18h-2v18z" />
 </vector>

@@ -1,320 +1,100 @@
 package cu.netscope.pro.service
 
-import android.Manifest
 import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
-import android.content.Context
+import android.app.Service
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.TrafficStats
-import android.os.Build
-import android.os.Handler
 import android.os.IBinder
-import android.os.Looper
-import android.telephony.*
-import android.util.Log
+import android.telephony.TelephonyManager
 import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.LifecycleService
 import cu.netscope.pro.MainActivity
 import cu.netscope.pro.R
-import cu.netscope.pro.data.model.CellInfo
-import cu.netscope.pro.data.model.NetworkState
-import java.util.concurrent.atomic.AtomicReference
+import cu.netscope.pro.util.NotificationUtils
+import kotlinx.coroutines.*
 
-class NetworkMonitorService : LifecycleService() {
+class NetMonitorService : Service() {
 
-    private var telephonyManager: TelephonyManager? = null
-    private var phoneStateListener: PhoneStateListener? = null
-    private var monitorHandler: Handler? = null
-    private var monitorRunnable: Runnable? = null
-
-    private var lastRxBytes = 0L
-    private var lastTxBytes = 0L
-    private var lastUpdateTime = System.currentTimeMillis()
-
-    private val currentNetworkState = AtomicReference<NetworkState>(NetworkState())
-    private val speedHistory = mutableListOf<Float>()
-    private val maxSpeedHistory = 30
-
-    companion object {
-        private const val NOTIFICATION_ID = 1001
-        private const val CHANNEL_ID = "network_monitor_channel"
-        const val ACTION_STOP = "cu.netscope.pro.STOP_SERVICE"
-        private const val TAG = "NetScopeService"
-
-        var networkStateListener: ((NetworkState) -> Unit)? = null
-
-        fun startService(context: Context) {
-            val intent = Intent(context, NetworkMonitorService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
-            }
-        }
-
-        fun stopService(context: Context) {
-            val intent = Intent(context, NetworkMonitorService::class.java).apply {
-                action = ACTION_STOP
-            }
-            context.startService(intent)
-        }
-    }
+    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    private lateinit var telephonyManager: TelephonyManager
+    private var running = false
 
     override fun onCreate() {
         super.onCreate()
-        createNotificationChannel()
-        setupTelephonyMonitoring()
-        startSpeedMonitoring()
-        startForeground(NOTIFICATION_ID, buildNotification("Iniciando..."))
+        telephonyManager = getSystemService(TelephonyManager::class.java)
+        startForeground(NotificationUtils.NOTIF_ID, buildNotification("?", "?", "?", null))
+        running = true
+        scope.launch {
+            monitorLoop()
+        }
+    }
+
+    private suspend fun monitorLoop() {
+        while (running) {
+            updateNotification()
+            delay(3000)
+        }
+    }
+
+    private fun updateNotification() {
+        val operator = telephonyManager.networkOperatorName ?: "?"
+        val networkType = when (telephonyManager.networkType) {
+            TelephonyManager.NETWORK_TYPE_LTE -> "LTE"
+            TelephonyManager.NETWORK_TYPE_HSPA, TelephonyManager.NETWORK_TYPE_HSPAP, TelephonyManager.NETWORK_TYPE_UMTS -> "WCDMA"
+            TelephonyManager.NETWORK_TYPE_GPRS, TelephonyManager.NETWORK_TYPE_EDGE -> "GSM"
+            else -> "?"
+        }
+        var dbmText = "?"
+        try {
+            val all = telephonyManager.allCellInfo
+            val primary = all?.firstOrNull { it.isRegistered } ?: all?.firstOrNull()
+            val dbm = when (primary) {
+                is android.telephony.CellInfoLte -> primary.cellSignalStrength?.dbm
+                is android.telephony.CellInfoWcdma -> primary.cellSignalStrength?.dbm
+                is android.telephony.CellInfoGsm -> primary.cellSignalStrength?.dbm
+                else -> null
+            }
+            dbmText = dbm?.toString() ?: "?"
+        } catch (e: SecurityException) {
+            dbmText = "?"
+        } catch (e: Exception) {
+            dbmText = "?"
+        }
+        val band = "?"
+        val notif = buildNotification(operator, networkType, band, dbmText)
+        val nm = getSystemService(android.app.NotificationManager::class.java)
+        nm?.notify(NotificationUtils.NOTIF_ID, notif)
+    }
+
+    private fun buildNotification(operator: String, networkType: String, band: String?, dbm: String?): Notification {
+        val stopIntent = Intent(this, NetMonitorService::class.java).apply {
+            action = "ACTION_STOP"
+        }
+        val stopPending = PendingIntent.getService(this, 0, stopIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val openIntent = Intent(this, MainActivity::class.java)
+        val openPending = PendingIntent.getActivity(this, 0, openIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        return NotificationCompat.Builder(this, NotificationUtils.CHANNEL_ID)
+            .setContentTitle(operator)
+            .setContentText("$networkType • ${dbm ?: "?"} dBm • ${band ?: "?"}")
+            .setSmallIcon(R.drawable.ic_signal_bars)
+            .setContentIntent(openPending)
+            .addAction(0, getString(R.string.notification_exit), stopPending)
+            .setOngoing(true)
+            .build()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_STOP) {
-            stopForeground(STOP_FOREGROUND_REMOVE)
+        if (intent?.action == "ACTION_STOP") {
             stopSelf()
             return START_NOT_STICKY
         }
         return START_STICKY
     }
 
-    override fun onBind(intent: Intent): IBinder? = null
-
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Monitoreo de Red",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Muestra información de la red móvil en tiempo real"
-                setShowBadge(false)
-            }
-            val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager.createNotificationChannel(channel)
-        }
-    }
-
-    private fun buildNotification(info: String): Notification {
-        val stopIntent = Intent(this, NetworkMonitorService::class.java).apply {
-            action = ACTION_STOP
-        }
-        val stopPendingIntent = PendingIntent.getService(
-            this, 0, stopIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        val contentIntent = Intent(this, MainActivity::class.java)
-        val contentPendingIntent = PendingIntent.getActivity(
-            this, 0, contentIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("NetScope Pro")
-            .setContentText(info)
-            .setSmallIcon(R.drawable.ic_signal_notification)
-            .setOngoing(true)
-            .setContentIntent(contentPendingIntent)
-            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Salir", stopPendingIntent)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .build()
-    }
-
-    @Suppress("DEPRECATION")
-    private fun setupTelephonyMonitoring() {
-        telephonyManager = getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
-        phoneStateListener = object : PhoneStateListener() {
-            override fun onSignalStrengthsChanged(signalStrength: SignalStrength) {
-                updateNetworkState()
-            }
-            override fun onCellInfoChanged(cellInfo: MutableList<android.telephony.CellInfo>) {
-                updateNetworkState()
-            }
-            override fun onDisplayInfoChanged(telephonyDisplayInfo: TelephonyDisplayInfo) {
-                updateNetworkState()
-            }
-        }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE)
-            == PackageManager.PERMISSION_GRANTED) {
-            telephonyManager?.listen(
-                phoneStateListener,
-                PhoneStateListener.LISTEN_SIGNAL_STRENGTHS or
-                PhoneStateListener.LISTEN_CELL_INFO or
-                PhoneStateListener.LISTEN_DISPLAY_INFO_CHANGED
-            )
-        }
-    }
-
-    private fun startSpeedMonitoring() {
-        monitorHandler = Handler(Looper.getMainLooper())
-        lastRxBytes = TrafficStats.getTotalRxBytes()
-        lastTxBytes = TrafficStats.getTotalTxBytes()
-        lastUpdateTime = System.currentTimeMillis()
-        monitorRunnable = object : Runnable {
-            override fun run() {
-                updateSpeedAndNotify()
-                monitorHandler?.postDelayed(this, 1000L)
-            }
-        }
-        monitorHandler?.post(monitorRunnable!!)
-    }
-
-    private fun updateSpeedAndNotify() {
-        val currentRxBytes = TrafficStats.getTotalRxBytes()
-        val currentTxBytes = TrafficStats.getTotalTxBytes()
-        val currentTime = System.currentTimeMillis()
-        val timeDelta = (currentTime - lastUpdateTime) / 1000f
-        if (timeDelta > 0) {
-            val rxSpeed = ((currentRxBytes - lastRxBytes) * 8f) / timeDelta
-            val txSpeed = ((currentTxBytes - lastTxBytes) * 8f) / timeDelta
-            val speedMbps = (rxSpeed + txSpeed) / 1_000_000f
-            synchronized(speedHistory) {
-                speedHistory.add(speedMbps)
-                if (speedHistory.size > maxSpeedHistory) speedHistory.removeAt(0)
-            }
-            val state = currentNetworkState.get()
-            state.downloadSpeedBps = rxSpeed
-            state.uploadSpeedBps = txSpeed
-            state.speedHistory = speedHistory.toList()
-            currentNetworkState.set(state)
-            networkStateListener?.invoke(state)
-        }
-        lastRxBytes = currentRxBytes
-        lastTxBytes = currentTxBytes
-        lastUpdateTime = currentTime
-        updateNotification()
-    }
-
-    private fun updateNetworkState() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-            != PackageManager.PERMISSION_GRANTED) return
-        val tm = telephonyManager ?: return
-        val state = NetworkState()
-        state.networkType = getNetworkTypeString(tm.dataNetworkType)
-        state.networkGeneration = getNetworkGeneration(tm.dataNetworkType)
-        state.operatorName = tm.networkOperatorName ?: "Desconocido"
-        state.mccMnc = tm.networkOperator ?: ""
-        state.isRoaming = tm.isNetworkRoaming
-
-        val allCells = tm.allCellInfo
-        if (allCells != null && allCells.isNotEmpty()) {
-            state.cells = allCells.mapNotNull { parseCellInfo(it) }
-            val primaryCell = allCells.firstOrNull { it.isRegistered }
-            if (primaryCell != null) {
-                state.primaryCell = parseCellInfo(primaryCell)
-            }
-        }
-
-        currentNetworkState.set(state)
-        networkStateListener?.invoke(state)
-    }
-
-    private fun parseCellInfo(cellInfo: android.telephony.CellInfo): CellInfo {
-        val cell = CellInfo()
-        when (cellInfo) {
-            is android.telephony.CellInfoLte -> {
-                val identity = cellInfo.cellIdentity
-                cell.type = "LTE"
-                cell.tac = identity.tac.toString()
-                cell.cid = identity.ci.toString()
-                cell.pci = identity.pci.toString()
-                cell.band = identity.bands?.firstOrNull()?.toString()?.let { "B$it" } ?: "?"
-                cell.frequency = identity.earfcn?.toString() ?: "?"
-                cell.dbm = cellInfo.cellSignalStrength.dbm
-                cell.isRegistered = cellInfo.isRegistered
-            }
-            is android.telephony.CellInfoWcdma -> {
-                val identity = cellInfo.cellIdentity
-                cell.type = "WCDMA"
-                cell.cid = identity.cid?.toString() ?: "?"
-                cell.lac = identity.lac?.toString() ?: "?"
-                cell.band = "?"
-                cell.dbm = cellInfo.cellSignalStrength.dbm
-                cell.isRegistered = cellInfo.isRegistered
-            }
-            is android.telephony.CellInfoGsm -> {
-                val identity = cellInfo.cellIdentity
-                cell.type = "GSM"
-                cell.cid = identity.cid.toString()
-                cell.lac = identity.lac.toString()
-                cell.band = "?"
-                cell.dbm = cellInfo.cellSignalStrength.dbm
-                cell.bsic = identity.bsic.toString()
-                cell.isRegistered = cellInfo.isRegistered
-            }
-        }
-        return cell
-    }
-
-    private fun getNetworkTypeString(networkType: Int): String {
-        return when (networkType) {
-            TelephonyManager.NETWORK_TYPE_GPRS -> "GPRS"
-            TelephonyManager.NETWORK_TYPE_EDGE -> "EDGE"
-            TelephonyManager.NETWORK_TYPE_UMTS -> "UMTS"
-            TelephonyManager.NETWORK_TYPE_HSDPA -> "HSDPA"
-            TelephonyManager.NETWORK_TYPE_HSUPA -> "HSUPA"
-            TelephonyManager.NETWORK_TYPE_HSPA -> "HSPA"
-            TelephonyManager.NETWORK_TYPE_CDMA -> "CDMA"
-            TelephonyManager.NETWORK_TYPE_EVDO_0 -> "EVDO Rev. 0"
-            TelephonyManager.NETWORK_TYPE_EVDO_A -> "EVDO Rev. A"
-            TelephonyManager.NETWORK_TYPE_EVDO_B -> "EVDO Rev. B"
-            TelephonyManager.NETWORK_TYPE_1xRTT -> "1xRTT"
-            TelephonyManager.NETWORK_TYPE_LTE -> "LTE"
-            TelephonyManager.NETWORK_TYPE_EHRPD -> "eHRPD"
-            TelephonyManager.NETWORK_TYPE_HSPAP -> "HSPA+"
-            TelephonyManager.NETWORK_TYPE_NR -> "5G NR"
-            TelephonyManager.NETWORK_TYPE_IWLAN -> "IWLAN"
-            else -> "Desconocido"
-        }
-    }
-
-    private fun getNetworkGeneration(networkType: Int): String {
-        return when (networkType) {
-            TelephonyManager.NETWORK_TYPE_GPRS, TelephonyManager.NETWORK_TYPE_EDGE,
-            TelephonyManager.NETWORK_TYPE_CDMA, TelephonyManager.NETWORK_TYPE_1xRTT -> "2G"
-            TelephonyManager.NETWORK_TYPE_UMTS, TelephonyManager.NETWORK_TYPE_EVDO_0,
-            TelephonyManager.NETWORK_TYPE_EVDO_A, TelephonyManager.NETWORK_TYPE_EVDO_B -> "3G"
-            TelephonyManager.NETWORK_TYPE_HSDPA, TelephonyManager.NETWORK_TYPE_HSUPA,
-            TelephonyManager.NETWORK_TYPE_HSPA, TelephonyManager.NETWORK_TYPE_HSPAP -> "3.5G"
-            TelephonyManager.NETWORK_TYPE_LTE, TelephonyManager.NETWORK_TYPE_EHRPD -> "4G"
-            TelephonyManager.NETWORK_TYPE_NR -> "5G"
-            else -> "?"
-        }
-    }
-
-    private fun updateNotification() {
-        val state = currentNetworkState.get()
-        val primaryCell = state.primaryCell
-        val info = buildString {
-            append(state.operatorName)
-            append(" | ")
-            append(state.networkGeneration)
-            append(" ")
-            append(primaryCell?.band ?: "?")
-            append(" | ")
-            append(primaryCell?.dbm ?: "?")
-            append(" dBm")
-            if (primaryCell?.frequency != null && primaryCell.frequency != "?") {
-                append(" | EARFCN: ")
-                append(primaryCell.frequency)
-            }
-            if (primaryCell?.cid != null && primaryCell.cid != "?") {
-                append(" | CID: ")
-                append(primaryCell.cid)
-            }
-        }
-        val notification = buildNotification(info)
-        val notificationManager = getSystemService(NotificationManager::class.java)
-        notificationManager.notify(NOTIFICATION_ID, notification)
-    }
-
     override fun onDestroy() {
-        monitorHandler?.removeCallbacks(monitorRunnable ?: return)
-        phoneStateListener?.let {
-            telephonyManager?.listen(it, PhoneStateListener.LISTEN_NONE)
-        }
+        running = false
+        scope.cancel()
         super.onDestroy()
     }
+
+    override fun onBind(intent: Intent?): IBinder? = null
 }

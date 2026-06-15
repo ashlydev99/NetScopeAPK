@@ -1,106 +1,40 @@
-name: 🔨 Build Debug APK (Manual)
+name: Build APK
 
 on:
   workflow_dispatch:
-    inputs:
-      version_name:
-        description: 'Nombre de versión (ej: 1.0.0)'
-        required: true
-        default: '1.0.0'
-      version_code:
-        description: 'Código de versión (ej: 1)'
-        required: true
-        default: '1'
 
 jobs:
   build:
-    name: Compilar APK Debug
     runs-on: ubuntu-latest
-    
     steps:
-      # 1. Clonar el repositorio
-      - name: 📥 Clonar repositorio
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      # 2. Configurar JDK 17
-      - name: ☕ Configurar JDK 17
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
-          distribution: 'temurin'
+          distribution: temurin
+          java-version: 17
 
-      # 3. Configurar Android SDK
-      - name: 🤖 Configurar Android SDK
+      - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          api-level: 34
+          build-tools: 34.0.0
 
-      # 4. Configurar Gradle 8.2 (versión específica)
-      - name: 🔧 Configurar Gradle 8.2
+      - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.2'
+          gradle-version: 8.2
 
-      # 5. Cache de Gradle
-      - name: 🗂️ Cache de Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
-      # 6. Generar Gradle Wrapper con versión 8.2
-      - name: 🔧 Generar Gradle Wrapper
-        run: gradle wrapper --gradle-version 8.2
-
-      # 7. Dar permisos de ejecución
-      - name: 🔑 Dar permisos a gradlew
+      - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
-      # 8. Verificar versión de Gradle
-      - name: ✅ Verificar Gradle
-        run: ./gradlew --version
+      - name: Build Debug APK
+        run: ./gradlew :app:assembleDebug --no-daemon
 
-      # 9. Actualizar versión en build.gradle.kts
-      - name: 📝 Actualizar versión
-        run: |
-          sed -i "s/versionName = \".*\"/versionName = \"${{ github.event.inputs.version_name }}\"/" app/build.gradle.kts
-          sed -i "s/versionCode = .*/versionCode = ${{ github.event.inputs.version_code }}/" app/build.gradle.kts
-
-      # 10. Compilar APK Debug
-      - name: 🔨 Compilar APK Debug
-        run: ./gradlew assembleDebug --stacktrace --no-daemon
-
-      # 11. Generar hash SHA256
-      - name: 🔐 Generar SHA256
-        run: |
-          sha256sum app/build/outputs/apk/debug/app-debug.apk > app/build/outputs/apk/debug/app-debug.apk.sha256
-
-      # 12. Subir APK como artefacto
-      - name: 📤 Subir APK Debug
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: NetScopePro-v${{ github.event.inputs.version_name }}-debug
-          path: |
-            app/build/outputs/apk/debug/app-debug.apk
-            app/build/outputs/apk/debug/app-debug.apk.sha256
-          compression-level: 6
-          retention-days: 30
-
-      # 13. Mostrar resumen
-      - name: 📋 Resumen de compilación
-        run: |
-          echo "============================================"
-          echo "✅ COMPILACIÓN EXITOSA"
-          echo "============================================"
-          echo "📱 APK: NetScopePro v${{ github.event.inputs.version_name }}"
-          echo "📦 Código de versión: ${{ github.event.inputs.version_code }}"
-          echo "🔐 SHA256:"
-          cat app/build/outputs/apk/debug/app-debug.apk.sha256
-          echo "============================================"
-          echo "📥 El APK está disponible en la sección"
-          echo "   'Artifacts' de esta ejecución."
-          echo "============================================"
+          name: netscopepro-apk
+          path: app/build/outputs/apk/debug/app-debug.apk

@@ -1,59 +1,28 @@
-<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+    package="cu.netscope.pro">
 
-    <!-- Permisos de red y estado -->
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
-    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-    
-    <!-- Permisos de ubicación para celdas y torres -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
-    
-    <!-- Permisos para servicio en primer plano -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_STATE" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    
-    <!-- Cámara para RA -->
-    <uses-permission android:name="android.permission.CAMERA" />
-    
-    <!-- Sensores -->
-    <uses-feature android:name="android.hardware.sensor.compass" android:required="false" />
-    <uses-feature android:name="android.hardware.camera" android:required="false" />
-    <uses-feature android:name="android.hardware.telephony" android:required="true" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
 
     <application
         android:name=".NetScopeApp"
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
         android:label="NetScope Pro"
-        android:supportsRtl="true"
-        android:theme="@style/Theme.NetScopePro"
-        android:usesCleartextTraffic="true"
-        tools:targetApi="34">
-        
+        android:theme="@style/Theme.NetScopePro">
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTask"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden">
+            android:theme="@style/Theme.NetScopePro.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <!-- Servicio de monitoreo en primer plano -->
         <service
-            android:name=".service.NetworkMonitorService"
-            android:foregroundServiceType="location|phoneCall"
+            android:name=".service.NetMonitorService"
             android:exported="false" />
-            
     </application>
 </manifest>

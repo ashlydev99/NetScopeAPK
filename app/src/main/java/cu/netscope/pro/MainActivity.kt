@@ -1,122 +1,98 @@
 package cu.netscope.pro
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
+import android.view.Gravity
+import android.view.View
+import android.widget.ImageView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.commit
 import cu.netscope.pro.databinding.ActivityMainBinding
-import cu.netscope.pro.service.NetworkMonitorService
-import cu.netscope.pro.ui.fragments.CellsFragment
-import cu.netscope.pro.ui.fragments.SpeedMeterFragment
+import cu.netscope.pro.service.NetMonitorService
+import cu.netscope.pro.ui.CellsFragment
+import cu.netscope.pro.ui.SpeedFragment
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private var showingCells = true
 
+    private val requestPermissions =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { _ ->
+            // fragments handle missing permissions gracefully
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        setupToolbar()
-        requestPermissions()
+        setSupportActionBar(binding.toolbar)
+        supportActionBar?.title = "NetScope Pro"
+
+        // Add icons to toolbar (no menu XML)
+        addToolbarIcon(R.drawable.ic_speedometer) { toggleScreen() }
+        addToolbarIcon(R.drawable.ic_info) { showAbout() }
 
         if (savedInstanceState == null) {
-            showCellsFragment()
-        }
-    }
-
-    private fun setupToolbar() {
-        binding.btnSpeedometer.setOnClickListener {
-            if (showingCells) {
-                showSpeedFragment()
-            } else {
-                showCellsFragment()
+            supportFragmentManager.commit {
+                setReorderingAllowed(true)
+                setCustomAnimations(0, 0, 0, 0)
+                replace(R.id.container, CellsFragment.newInstance())
             }
         }
 
-        binding.btnInfo.setOnClickListener {
-            showAboutDialog()
+        // request permissions
+        val needed = mutableListOf<String>()
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            needed.add(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            needed.add(Manifest.permission.ACCESS_COARSE_LOCATION)
+        }
+        if (needed.isNotEmpty()) {
+            requestPermissions.launch(needed.toTypedArray())
+        }
+
+        // start foreground service (channel already created in Application)
+        val svc = Intent(this, NetMonitorService::class.java)
+        ContextCompat.startForegroundService(this, svc)
+    }
+
+    private fun toggleScreen() {
+        showingCells = !showingCells
+        val frag = if (showingCells) CellsFragment.newInstance() else SpeedFragment.newInstance()
+        supportFragmentManager.commit {
+            setReorderingAllowed(true)
+            setCustomAnimations(0, 0, 0, 0)
+            replace(R.id.container, frag)
         }
     }
 
-    private fun showCellsFragment() {
-        showingCells = true
-        binding.toolbar.title = "NetScope Pro"
-        binding.btnSpeedometer.setImageResource(R.drawable.ic_speed)
-        supportFragmentManager.beginTransaction()
-            .setCustomAnimations(0, 0, 0, 0)
-            .replace(R.id.fragment_container, CellsFragment())
-            .commit()
-    }
-
-    private fun showSpeedFragment() {
-        showingCells = false
-        binding.toolbar.title = "Velocímetro"
-        binding.btnSpeedometer.setImageResource(R.drawable.ic_cells)
-        supportFragmentManager.beginTransaction()
-            .setCustomAnimations(0, 0, 0, 0)
-            .replace(R.id.fragment_container, SpeedMeterFragment())
-            .commit()
-    }
-
-    private fun showAboutDialog() {
+    private fun showAbout() {
         AlertDialog.Builder(this)
-            .setTitle("Acerca de NetScope Pro")
-            .setMessage(
-                "Creado con amor para la comunidad.\n\n" +
-                "Desarrollador: Ashly Dev\n\n" +
-                "Copyright © Ashly Dev 2026. Todos los derechos reservados.\n\n" +
-                "Contacto: ashlydev99@gmail.com"
-            )
-            .setPositiveButton("Cerrar", null)
+            .setTitle(getString(R.string.about_title))
+            .setMessage(getString(R.string.about_text))
+            .setPositiveButton("OK", null)
             .show()
     }
 
-    private fun requestPermissions() {
-        val permissionsToRequest = mutableListOf<String>()
-
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-            != PackageManager.PERMISSION_GRANTED) {
-            permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION)
-        }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
-            != PackageManager.PERMISSION_GRANTED) {
-            permissionsToRequest.add(Manifest.permission.ACCESS_COARSE_LOCATION)
-        }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE)
-            != PackageManager.PERMISSION_GRANTED) {
-            permissionsToRequest.add(Manifest.permission.READ_PHONE_STATE)
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                != PackageManager.PERMISSION_GRANTED) {
-                permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        }
-
-        if (permissionsToRequest.isNotEmpty()) {
-            requestPermissionLauncher.launch(permissionsToRequest.toTypedArray())
-        } else {
-            startNetworkService()
-        }
-    }
-
-    private val requestPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val allGranted = permissions.values.all { it }
-        if (allGranted) {
-            startNetworkService()
-        }
-    }
-
-    private fun startNetworkService() {
-        NetworkMonitorService.startService(this)
+    private fun addToolbarIcon(drawableRes: Int, onClick: () -> Unit) {
+        val iv = ImageView(this)
+        iv.setImageResource(drawableRes)
+        val lp = androidx.appcompat.widget.Toolbar.LayoutParams(
+            androidx.appcompat.widget.Toolbar.LayoutParams.WRAP_CONTENT,
+            androidx.appcompat.widget.Toolbar.LayoutParams.WRAP_CONTENT
+        ).apply { gravity = Gravity.END }
+        iv.layoutParams = lp
+        val pad = (resources.displayMetrics.density * 12).toInt()
+        iv.setPadding(pad, 0, pad, 0)
+        iv.setOnClickListener { onClick() }
+        binding.toolbar.addView(iv)
     }
 }

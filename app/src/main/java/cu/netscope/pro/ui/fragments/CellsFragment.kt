@@ -1,133 +1,183 @@
-package cu.netscope.pro.ui.fragments
+package cu.netscope.pro.ui
 
+import android.content.Context
 import android.os.Bundle
+import android.telephony.*
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
-import cu.netscope.pro.data.model.CellInfo
-import cu.netscope.pro.data.model.NetworkState
 import cu.netscope.pro.databinding.FragmentCellsBinding
-import cu.netscope.pro.service.NetworkMonitorService
+import cu.netscope.pro.model.CellInfoModel
 import cu.netscope.pro.ui.adapters.CellAdapter
 
 class CellsFragment : Fragment() {
 
     private var _binding: FragmentCellsBinding? = null
     private val binding get() = _binding!!
-    
-    private lateinit var cellAdapter: CellAdapter
+    private lateinit var telephonyManager: TelephonyManager
+    private lateinit var adapter: CellAdapter
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
+    companion object {
+        fun newInstance() = CellsFragment()
+    }
+
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentCellsBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        setupRecyclerView()
-        observeNetworkState()
+        telephonyManager = requireContext().getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+        adapter = CellAdapter(emptyList()) { cell -> showDetails(cell) }
+        binding.rvCells.layoutManager = LinearLayoutManager(requireContext())
+        binding.rvCells.adapter = adapter
+        updateNetworkInfo()
     }
 
-    private fun setupRecyclerView() {
-        cellAdapter = CellAdapter { cell ->
-            showCellDetailDialog(cell)
+    private fun updateNetworkInfo() {
+        val operator = telephonyManager.networkOperatorName ?: "?"
+        val networkType = when (telephonyManager.networkType) {
+            TelephonyManager.NETWORK_TYPE_LTE -> "LTE"
+            TelephonyManager.NETWORK_TYPE_HSPA, TelephonyManager.NETWORK_TYPE_HSPAP, TelephonyManager.NETWORK_TYPE_UMTS -> "WCDMA"
+            TelephonyManager.NETWORK_TYPE_GPRS, TelephonyManager.NETWORK_TYPE_EDGE -> "GSM"
+            else -> "?"
         }
-        binding.recyclerCells.apply {
-            layoutManager = LinearLayoutManager(requireContext())
-            adapter = cellAdapter
-            setHasFixedSize(true)
-            itemAnimator = null
+        val generation = when (telephonyManager.networkType) {
+            TelephonyManager.NETWORK_TYPE_LTE -> "4G"
+            TelephonyManager.NETWORK_TYPE_HSPA, TelephonyManager.NETWORK_TYPE_HSPAP, TelephonyManager.NETWORK_TYPE_UMTS -> "3G"
+            TelephonyManager.NETWORK_TYPE_GPRS, TelephonyManager.NETWORK_TYPE_EDGE -> "2G"
+            else -> "?"
         }
-    }
+        binding.tvOperator.text = operator
+        binding.tvType.text = networkType
+        binding.tvGeneration.text = generation
 
-    private fun observeNetworkState() {
-        NetworkMonitorService.networkStateListener = { state ->
-            if (_binding != null && isAdded) {
-                updateUI(state)
+        val cells = mutableListOf<CellInfoModel>()
+        try {
+            val all = telephonyManager.allCellInfo
+            if (all != null) {
+                for (ci in all) {
+                    val model = parseCellInfo(ci)
+                    if (model != null) cells.add(model)
+                }
             }
+        } catch (e: SecurityException) {
+            // permissions missing
+        } catch (e: Exception) {
+            // defensive
+        }
+
+        val sorted = cells.sortedWith(compareByDescending<CellInfoModel> { it.isRegistered == true }.thenBy { it.dbm ?: Int.MIN_VALUE })
+        adapter.update(sorted)
+
+        val primary = sorted.firstOrNull()
+        binding.tvSignal.text = primary?.dbm?.let { "${it} dBm - ${signalDesc(it)}" } ?: "Sin señal"
+        binding.tvBand.text = primary?.band ?: "?"
+    }
+
+    private fun parseCellInfo(ci: CellInfo): CellInfoModel? {
+        return try {
+            when (ci) {
+                is CellInfoLte -> {
+                    val id = ci.cellIdentity
+                    val dbm = ci.cellSignalStrength?.dbm ?: id.hashCode()
+                    val band = try {
+                        // safe reflection attempt; may fail on some vendors
+                        val method = id::class.java.methods.firstOrNull { it.name.equals("getBands", true) }
+                        val bands = method?.invoke(id)
+                        if (bands is IntArray && bands.isNotEmpty()) "B${bands[0]}" else "?"
+                    } catch (e: Exception) {
+                        "?"
+                    }
+                    CellInfoModel(
+                        type = "LTE",
+                        band = band,
+                        dbm = dbm,
+                        cid = id.ci?.toLong(),
+                        lac = null,
+                        tac = id.tac,
+                        pci = id.pci,
+                        bsic = null,
+                        frequency = try { id.earfcn } catch (e: Exception) { null },
+                        isRegistered = ci.isRegistered
+                    )
+                }
+                is CellInfoWcdma -> {
+                    val id = ci.cellIdentity
+                    val dbm = ci.cellSignalStrength?.dbm
+                    CellInfoModel(
+                        type = "WCDMA",
+                        band = "?",
+                        dbm = dbm,
+                        cid = id.cid?.toLong(),
+                        lac = id.lac,
+                        tac = null,
+                        pci = null,
+                        bsic = null,
+                        frequency = null,
+                        isRegistered = ci.isRegistered
+                    )
+                }
+                is CellInfoGsm -> {
+                    val id = ci.cellIdentity
+                    val dbm = ci.cellSignalStrength?.dbm
+                    CellInfoModel(
+                        type = "GSM",
+                        band = "?",
+                        dbm = dbm,
+                        cid = id.cid?.toLong(),
+                        lac = id.lac,
+                        tac = null,
+                        pci = null,
+                        bsic = id.bsic,
+                        frequency = null,
+                        isRegistered = ci.isRegistered
+                    )
+                }
+                else -> null
+            }
+        } catch (e: Exception) {
+            null
         }
     }
 
-    private fun updateUI(state: NetworkState) {
-        binding.textOperatorName.text = state.operatorName ?: "Buscando..."
-        binding.textNetworkGen.text = state.networkGeneration ?: "?"
-        binding.textNetworkType.text = state.networkType ?: "?"
-
-        val primaryCell = state.primaryCell
-        val cellDbm = primaryCell?.dbm
-        
-        if (primaryCell != null && cellDbm != null && cellDbm < 0) {
-            binding.textPrimaryDbm.text = "${primaryCell.dbm} dBm"
-            binding.textPrimaryBand.text = primaryCell.band ?: "?"
-            
-            val signalLevel = primaryCell.signalLevel
-            binding.textSignalLevel.text = when (signalLevel) {
-                5 -> "Excelente"
-                4 -> "Buena"
-                3 -> "Inestable"
-                2 -> "Mala"
-                1 -> "Muy débil"
-                else -> "Sin señal"
-            }
-            
-            val signalColor = when {
-                signalLevel >= 5 -> 0xFF4CAF50.toInt()
-                signalLevel == 4 -> 0xFF8BC34A.toInt()
-                signalLevel == 3 -> 0xFFFFC107.toInt()
-                signalLevel == 2 -> 0xFFFF9800.toInt()
-                signalLevel == 1 -> 0xFFF44336.toInt()
-                else -> 0xFF888888.toInt()
-            }
-            binding.textSignalLevel.setTextColor(signalColor)
-            binding.textPrimaryDbm.setTextColor(signalColor)
-        } else {
-            binding.textPrimaryDbm.text = "-- dBm"
-            binding.textPrimaryBand.text = "?"
-            binding.textSignalLevel.text = "Buscando..."
-            binding.textSignalLevel.setTextColor(0xFF888888.toInt())
-            binding.textPrimaryDbm.setTextColor(0xFF888888.toInt())
+    private fun signalDesc(dbm: Int): String {
+        return when {
+            dbm >= -90 -> "Excelente"
+            dbm >= -95 -> "Buena"
+            dbm >= -105 -> "Inestable"
+            dbm >= -115 -> "Mala"
+            dbm >= -120 -> "Muy débil"
+            else -> "Sin señal"
         }
-
-        val allCells = state.cells.sortedWith(compareByDescending<CellInfo> { it.isRegistered }
-            .thenByDescending { it.dbm ?: -200 })
-        cellAdapter.submitList(allCells)
-        binding.textCellCount.text = "${allCells.size} celdas detectadas"
     }
 
-    private fun showCellDetailDialog(cell: CellInfo) {
-        val type = cell.type ?: "?"
-        val dbm = cell.dbm ?: 0
-        val band = cell.band ?: "?"
-        val frequency = cell.frequency ?: "?"
-        val tac = cell.tac ?: ""
-        val cid = cell.cid ?: ""
-        val lac = cell.lac ?: ""
-        val pci = cell.pci ?: ""
-        val bsic = cell.bsic ?: ""
-        
-        val dialog = android.app.AlertDialog.Builder(requireContext())
-            .setTitle("Detalles de Celda $type")
-            .setMessage(buildString {
-                append("Tipo: $type\n")
-                append("Señal: $dbm dBm\n")
-                if (band != "?" && band.isNotEmpty()) append("Banda: $band\n")
-                if (frequency != "?" && frequency.isNotEmpty()) append("Frecuencia/EARFCN: $frequency\n")
-                if (tac != "0" && tac.isNotEmpty()) append("TAC: $tac\n")
-                if (cid != "0" && cid.isNotEmpty()) append("CID: $cid\n")
-                if (lac != "0" && lac.isNotEmpty()) append("LAC: $lac\n")
-                if (pci != "0" && pci.isNotEmpty()) append("PCI: $pci\n")
-                if (bsic != "0" && bsic.isNotEmpty()) append("BSIC: $bsic\n")
-                append("Conectado: ${if (cell.isConnected) "Sí" else "No"}")
-            })
-            .setPositiveButton("Cerrar", null)
+    private fun showDetails(cell: CellInfoModel) {
+        val details = StringBuilder()
+        details.append("Tipo: ${cell.type ?: "?"}\n")
+        details.append("dBm: ${cell.dbm ?: "?"}\n")
+        details.append("Banda: ${cell.band ?: "?"}\n")
+        details.append("Frecuencia/EARFCN: ${cell.frequency ?: "?"}\n")
+        details.append("TAC: ${cell.tac ?: "?"}\n")
+        details.append("CID: ${cell.cid ?: "?"}\n")
+        details.append("LAC: ${cell.lac ?: "?"}\n")
+        details.append("PCI: ${cell.pci ?: "?"}\n")
+        details.append("BSIC: ${cell.bsic ?: "?"}\n")
+        details.append("Registrada: ${cell.isRegistered ?: false}\n")
+
+        val dialog = androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("Detalles de celda")
+            .setMessage(details.toString())
+            .setPositiveButton("OK", null)
             .create()
         dialog.show()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateNetworkInfo()
     }
 
     override fun onDestroyView() {
