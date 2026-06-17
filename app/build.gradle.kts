@@ -4,25 +4,31 @@ plugins {
 }
 
 android {
-    namespace = "cu.netscope.pro"
+    namespace = "cu.ashlydev.buzon"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "cu.netscope.pro"
-        minSdk = 26
+        applicationId = "cu.ashlydev.buzon"
+        minSdk = 29
         targetSdk = 34
         versionCode = 1
-        versionName = "1.0.0"
+        versionName = "1.0"
     }
 
     buildFeatures {
+        compose = true
         viewBinding = true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.4"
     }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
     kotlinOptions {
         jvmTarget = "17"
     }
@@ -30,18 +36,30 @@ android {
 
 dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.appcompat:appcompat:1.6.1")
-    implementation("com.google.android.material:material:1.11.0")
-    implementation("androidx.fragment:fragment-ktx:1.6.2")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
-    implementation("androidx.lifecycle:lifecycle-service:2.7.0")
+    implementation("androidx.activity:activity-compose:1.8.2")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    
+    // Compose
+    implementation(platform("androidx.compose:compose-bom:2023.10.01"))
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material-icons-extended")
+    
+    // Navigation
+    implementation("androidx.navigation:navigation-compose:2.7.6")
+    
+    // Permissions
+    implementation("com.google.accompanist:accompanist-permissions:0.32.0")
+    
+    // DataStore (para ajustes)
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+    
+    // Audio
+    implementation("androidx.media:media:1.7.0")
+    
+    // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
-
-    // UI components required by layouts
-    implementation("androidx.cardview:cardview:1.0.0")
-    implementation("androidx.recyclerview:recyclerview:1.3.1")
-    implementation("androidx.coordinatorlayout:coordinatorlayout:1.2.0")
-
-    // Charting (from JitPack)
-    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
 }

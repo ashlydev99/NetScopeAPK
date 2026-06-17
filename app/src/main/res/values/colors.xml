@@ -1,12 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="background">#121212</color>
-    <color name="card">#1E1E1E</color>
-    <color name="text">#FFFFFF</color>
-    <color name="accent">#4CAF50</color>
-    <color name="green_light">#66BB6A</color>
-    <color name="yellow">#FFEB3B</color>
-    <color name="orange">#FF9800</color>
-    <color name="red">#F44336</color>
-    <color name="gray">#9E9E9E</color>
-    <color name="transparent_black">#80121212</color>
+    <color name="electric_blue">#00B4FF</color>
+    <color name="electric_blue_dark">#0088CC</color>
+    <color name="electric_blue_light">#66D0FF</color>
+    <color name="electric_blue_transparent">#3300B4FF</color>
+    <color name="background_dark">#0A0A0A</color>
+    <color name="surface_dark">#1A1A1A</color>
+    <color name="surface_dark_variant">#2A2A2A</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#B0B0B0</color>
+    <color name="divider_dark">#333333</color>
+    <color name="red_error">#FF4444</color>
 </resources>

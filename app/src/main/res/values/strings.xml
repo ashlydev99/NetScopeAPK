@@ -1,9 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">NetScope Pro</string>
-    <string name="about_title">Acerca de</string>
-    <string name="about_text">NetScope Pro\nAnalizador de redes móviles simplificado\nOffline • Sin root</string>
-    <string name="cells_title">Celdas</string>
-    <string name="speed_title">Velocímetro</string>
-    <string name="notification_channel">NetScope Monitor</string>
-    <string name="notification_exit">Salir</string>
+    <string name="app_name">Buzón de voz</string>
+    <string name="no_messages">No hay mensajes de voz</string>
+    <string name="empty_state">Los mensajes aparecerán aquí</string>
+    <string name="default_greeting">Deja un mensaje después del tono</string>
+    <string name="info_title">Información</string>
+    <string name="developer">Desarrollador: AshlyDev</string>
+    <string name="contact">Contacto:</string>
+    <string name="email">ashlydev99@gmail.com</string>
+    <string name="whatsapp">(+53) 63957890</string>
+    <string name="copyright">© AshlyDev 2026\nTodos los derechos reservados</string>
 </resources>

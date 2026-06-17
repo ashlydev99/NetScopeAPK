@@ -1,9 +1,0 @@
-<resources>
-    <string name="app_name">NetScope Pro</string>
-    <string name="about_title">Acerca de</string>
-    <string name="about_text">NetScope Pro\nAnalizador de redes móviles simplificado\nOffline • Sin root</string>
-    <string name="cells_title">Celdas</string>
-    <string name="speed_title">Velocímetro</string>
-    <string name="notification_channel">NetScope Monitor</string>
-    <string name="notification_exit">Salir</string>
-</resources>

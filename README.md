@@ -1,18 +1,16 @@
-# NetScope Pro
+# Buzón de Voz
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
-NetScope Pro es un analizador de redes móviles simplificado, offline y sin necesidad de root. Diseñado para Android 8.0+.
+Buzón de Voz es una aplicación de Buzón de Voz para móviles simplificado, offline y sin necesidad de root. Diseñado para Android 8.0+.
 
 ## Características
-- Tema oscuro consistente.
-- Pantalla Celdas: información de operador, generación, tipo, señal en dBm con descripción y lista de celdas detectadas.
-- Pantalla Velocímetro: monitor pasivo de tráfico (TrafficStats) y gráfica de ráfagas (últimos 30s) con MPAndroidChart.
-- Servicio en primer plano que monitorea la red y muestra notificación persistente con botón "Salir".
-- Soporta CellInfoGsm, CellInfoWcdma, CellInfoLte (no 5G NR para compatibilidad API 26).
+- Pantalla Principal: muestra mensajes de voz entrantes
+- Pantalla Detalles: Detalles y reproducción del mensaje de voz
+- Pantalla de Ajustes: Opciones de configuración variadas para el control de la aplicación
 
 ## Estructura del proyecto
-- `app/src/main/java/cu/netscope/pro/` - código fuente.
+- `app/src/main/java/cu/ashlydev/buzon/` - código fuente.
 - `app/src/main/res/` - layouts, drawables, valores.
 - `build.gradle.kts` y `settings.gradle.kts` - configuración Kotlin DSL.
 - `.github/workflows/build-apk.yml` - workflow para compilar APK debug.

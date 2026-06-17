@@ -1,9 +1,8 @@
 pluginManagement {
     repositories {
-        gradlePluginPortal()
         google()
         mavenCentral()
-        maven("https://jitpack.io")
+        gradlePluginPortal()
     }
 }
 dependencyResolutionManagement {
@@ -11,8 +10,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven("https://jitpack.io")
     }
 }
-rootProject.name = "NetScopePro"
+rootProject.name = "BuzonVoz"
 include(":app")

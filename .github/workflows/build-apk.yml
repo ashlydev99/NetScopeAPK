@@ -1,17 +1,7 @@
-name: 🔨 Build Debug APK (Manual)
+name: Compilar APK Debug
 
-# Workflow de ejecución manual desde la pestaña "Actions" de GitHub
 on:
-  workflow_dispatch:
-    inputs:
-      version_name:
-        description: 'Nombre de versión (ej: 1.0.0)'
-        required: true
-        default: '1.0.0'
-      version_code:
-        description: 'Código de versión (ej: 1)'
-        required: true
-        default: '1'
+  workflow_dispatch:  # Ejecución manual desde GitHub
 
 jobs:
   build:
@@ -20,70 +10,36 @@ jobs:
     
     steps:
       # 1. Clonar el repositorio
-      - name: 📥 Clonar repositorio
+      - name: Checkout código
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
+        
       # 2. Configurar JDK 17
-      - name: ☕ Configurar JDK 17
+      - name: Configurar JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-
-      # 3. Cache de Gradle para builds más rápidas
-      - name: 🗂️ Cache de Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle.kts', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
-      # 4. Dar permisos de ejecución al gradlew
-      - name: 🔑 Dar permisos a gradlew
-        run: chmod +x ./gradlew
-
-      # 5. Actualizar versión en build.gradle.kts
-      - name: 📝 Actualizar versión
-        run: |
-          sed -i "s/versionName = \".*\"/versionName = \"${{ github.event.inputs.version_name }}\"/" app/build.gradle.kts
-          sed -i "s/versionCode = .*/versionCode = ${{ github.event.inputs.version_code }}/" app/build.gradle.kts
-
-      # 6. Compilar APK Debug
-      - name: 🔨 Compilar APK Debug
-        run: ./gradlew assembleDebug --stacktrace
-
-      # 7. Generar hash SHA256 del APK
-      - name: 🔐 Generar SHA256
-        run: |
-          sha256sum app/build/outputs/apk/debug/app-debug.apk > app/build/outputs/apk/debug/app-debug.apk.sha256
-
-      # 8. Subir APK como artefacto
-      - name: 📤 Subir APK Debug
+          
+      # 3. Configurar permisos para gradlew
+      - name: Dar permisos a gradlew
+        run: chmod +x gradlew
+        
+      # 4. Compilar APK Debug
+      - name: Compilar APK Debug
+        run: ./gradlew assembleDebug --no-daemon
+        
+      # 5. Subir APK como artefacto
+      - name: Subir APK como artefacto
         uses: actions/upload-artifact@v4
         with:
-          name: NetScopePro-v${{ github.event.inputs.version_name }}-debug
-          path: |
-            app/build/outputs/apk/debug/app-debug.apk
-            app/build/outputs/apk/debug/app-debug.apk.sha256
-          compression-level: 6
+          name: BuzonVoz-Debug
+          path: app/build/outputs/apk/debug/*.apk
           retention-days: 30
-
-      # 9. Mostrar resumen
-      - name: 📋 Resumen de compilación
-        run: |
-          echo "============================================"
-          echo "✅ COMPILACIÓN EXITOSA"
-          echo "============================================"
-          echo "📱 APK: NetScopePro v${{ github.event.inputs.version_name }}"
-          echo "📦 Código de versión: ${{ github.event.inputs.version_code }}"
-          echo "🔐 SHA256:"
-          cat app/build/outputs/apk/debug/app-debug.apk.sha256
-          echo "============================================"
-          echo "📥 El APK está disponible en la sección"
-          echo "   'Artifacts' de esta ejecución."
-          echo "============================================"
+          
+      # 6. (Opcional) Subir también el mapping.txt para debug
+      - name: Subir mapping de debug
+        uses: actions/upload-artifact@v4
+        with:
+          name: BuzonVoz-Mapping
+          path: app/build/outputs/mapping/debug/mapping.txt
+          retention-days: 30
