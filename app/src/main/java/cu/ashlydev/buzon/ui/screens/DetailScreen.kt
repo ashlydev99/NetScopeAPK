@@ -50,7 +50,6 @@ fun DetailScreen(
     var currentPosition by remember { mutableStateOf(0) }
     val duration = remember { message.duration }
     
-    // Reproducir al iniciar
     LaunchedEffect(Unit) {
         audioPlayer.setOnCompletionListener {
             isPlaying = false
@@ -103,7 +102,6 @@ fun DetailScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Información del mensaje
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -137,7 +135,6 @@ fun DetailScreen(
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            // Controles de reproducción
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -151,7 +148,6 @@ fun DetailScreen(
                         .padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Barra de progreso
                     LinearProgressIndicator(
                         progress = if (duration > 0) currentPosition.toFloat() / duration else 0f,
                         modifier = Modifier
@@ -181,13 +177,11 @@ fun DetailScreen(
                                 } else {
                                     audioPlayer.play(message.filePath)
                                     isPlaying = true
-                                    // Actualizar posición con corrutina
                                     scope.launch {
                                         while (isPlaying && audioPlayer.isPlaying()) {
                                             currentPosition = audioPlayer.getCurrentPosition() / 1000
                                             delay(500)
                                         }
-                                        // Cuando termina la reproducción
                                         if (!audioPlayer.isPlaying()) {
                                             isPlaying = false
                                             currentPosition = 0
@@ -217,7 +211,6 @@ fun DetailScreen(
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Botón de guardar
             Button(
                 onClick = {
                     saveAudioToDevice(context, message.filePath, message.phoneNumber)
@@ -268,11 +261,10 @@ private fun saveAudioToDevice(context: Context, filePath: String, phoneNumber: S
         val fileName = "mensaje_${phoneNumber}_${System.currentTimeMillis()}.3gp"
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            // Android 10+ usa MediaStore
             val contentValues = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
                 put(MediaStore.MediaColumns.MIME_TYPE, "audio/3gpp")
-                put(MediaStore.MediaColumns.RELATIVE_PATH, "${Environment.DIRECTORY_MUSICS}/BuzonVoz")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, "Music/BuzonVoz")
             }
             
             val uri = context.contentResolver.insert(
@@ -293,7 +285,6 @@ private fun saveAudioToDevice(context: Context, filePath: String, phoneNumber: S
                 ).show()
             }
         } else {
-            // Android 9 y menor
             val musicDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSICS), "BuzonVoz")
             if (!musicDir.exists()) {
                 musicDir.mkdirs()
