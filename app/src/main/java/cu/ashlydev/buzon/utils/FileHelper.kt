@@ -57,11 +57,9 @@ object FileHelper {
                 }
                 true
             } else {
-                // Android 9 y menor
-                val musicDir = File(
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSICS),
-                    "BuzonVoz"
-                )
+                // Android 9 y menor - usar String literal "Music"
+                val musicPath = Environment.getExternalStoragePublicDirectory("Music")
+                val musicDir = File(musicPath, "BuzonVoz")
                 if (!musicDir.exists()) {
                     musicDir.mkdirs()
                 }

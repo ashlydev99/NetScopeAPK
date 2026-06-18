@@ -40,7 +40,10 @@ fun DetailScreen(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            Text("Mensaje no encontrado", color = Color.White)
+            Text(
+                text = "Mensaje no encontrado",
+                color = Color.White
+            )
         }
         return
     }
@@ -80,10 +83,12 @@ fun DetailScreen(
                     containerColor = Color(0xFF0A0A0A)
                 ),
                 actions = {
-                    IconButton(onClick = {
-                        MessageRepository.deleteMessage(context, message.id)
-                        onBack()
-                    }) {
+                    IconButton(
+                        onClick = {
+                            MessageRepository.deleteMessage(context, message.id)
+                            onBack()
+                        }
+                    ) {
                         Icon(
                             Icons.Default.Delete,
                             contentDescription = "Eliminar",
@@ -102,7 +107,7 @@ fun DetailScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Información del mensaje
+            // Tarjeta con información del mensaje
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -136,7 +141,7 @@ fun DetailScreen(
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            // Controles de reproducción
+            // Tarjeta con controles de reproducción
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -150,6 +155,7 @@ fun DetailScreen(
                         .padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    // Barra de progreso
                     LinearProgressIndicator(
                         progress = if (duration > 0) currentPosition.toFloat() / duration else 0f,
                         modifier = Modifier
@@ -236,19 +242,28 @@ fun DetailScreen(
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Guardar en el dispositivo", color = Color.White)
+                    Text(
+                        text = "Guardar en el dispositivo",
+                        color = Color.White
+                    )
                 }
             }
         }
     }
 }
 
+/**
+ * Formatea el tiempo en minutos y segundos
+ */
 private fun formatTime(seconds: Int): String {
     val minutes = seconds / 60
     val secs = seconds % 60
     return String.format("%02d:%02d", minutes, secs)
 }
 
+/**
+ * Guarda el audio en el almacenamiento del dispositivo
+ */
 private fun saveAudioToDevice(context: Context, filePath: String, phoneNumber: String) {
     try {
         val sourceFile = File(filePath)
@@ -290,10 +305,8 @@ private fun saveAudioToDevice(context: Context, filePath: String, phoneNumber: S
             }
         } else {
             // Android 9 y menor
-            val musicDir = File(
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSICS),
-                "BuzonVoz"
-            )
+            val musicPath = Environment.getExternalStoragePublicDirectory("Music")
+            val musicDir = File(musicPath, "BuzonVoz")
             if (!musicDir.exists()) {
                 musicDir.mkdirs()
             }
