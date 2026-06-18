@@ -1,14 +1,10 @@
 package cu.ashlydev.buzon.ui.screens
 
-import android.Manifest
 import android.content.ContentValues
 import android.content.Context
-import android.content.pm.PackageManager
-import android.media.MediaPlayer
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -21,13 +17,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import cu.ashlydev.buzon.data.MessageRepository
 import cu.ashlydev.buzon.data.models.VoiceMessage
 import cu.ashlydev.buzon.ui.theme.ElectricBlue
 import cu.ashlydev.buzon.utils.AudioPlayer
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.io.File
-import java.io.FileOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,6 +32,7 @@ fun DetailScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val message = remember { MessageRepository.getMessage(context, messageId) }
     
     if (message == null) {
@@ -184,14 +181,17 @@ fun DetailScreen(
                                 } else {
                                     audioPlayer.play(message.filePath)
                                     isPlaying = true
-                                    // Actualizar posición
-                                    kotlinx.coroutines.GlobalScope.launch {
+                                    // Actualizar posición con corrutina
+                                    scope.launch {
                                         while (isPlaying && audioPlayer.isPlaying()) {
                                             currentPosition = audioPlayer.getCurrentPosition() / 1000
-                                            kotlinx.coroutines.delay(500)
+                                            delay(500)
                                         }
-                                        isPlaying = false
-                                        currentPosition = 0
+                                        // Cuando termina la reproducción
+                                        if (!audioPlayer.isPlaying()) {
+                                            isPlaying = false
+                                            currentPosition = 0
+                                        }
                                     }
                                 }
                             },
@@ -256,15 +256,23 @@ private fun formatTime(seconds: Int): String {
 private fun saveAudioToDevice(context: Context, filePath: String, phoneNumber: String) {
     try {
         val sourceFile = File(filePath)
-        if (!sourceFile.exists()) return
+        if (!sourceFile.exists()) {
+            android.widget.Toast.makeText(
+                context,
+                "El archivo no existe",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+            return
+        }
         
         val fileName = "mensaje_${phoneNumber}_${System.currentTimeMillis()}.3gp"
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // Android 10+ usa MediaStore
             val contentValues = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
                 put(MediaStore.MediaColumns.MIME_TYPE, "audio/3gpp")
-                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_MUSICS)
+                put(MediaStore.MediaColumns.RELATIVE_PATH, "${Environment.DIRECTORY_MUSICS}/BuzonVoz")
             }
             
             val uri = context.contentResolver.insert(
@@ -278,23 +286,32 @@ private fun saveAudioToDevice(context: Context, filePath: String, phoneNumber: S
                         input.copyTo(outputStream)
                     }
                 }
+                android.widget.Toast.makeText(
+                    context,
+                    "Audio guardado en Música/BuzonVoz",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
             }
         } else {
-            val musicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSICS)
+            // Android 9 y menor
+            val musicDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSICS), "BuzonVoz")
+            if (!musicDir.exists()) {
+                musicDir.mkdirs()
+            }
             val destFile = File(musicDir, fileName)
             sourceFile.copyTo(destFile, overwrite = true)
+            android.widget.Toast.makeText(
+                context,
+                "Audio guardado en ${destFile.absolutePath}",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
         }
-        
-        android.widget.Toast.makeText(
-            context,
-            "Audio guardado correctamente",
-            android.widget.Toast.LENGTH_SHORT
-        ).show()
     } catch (e: Exception) {
         android.widget.Toast.makeText(
             context,
             "Error al guardar: ${e.message}",
-            android.widget.Toast.LENGTH_SHORT
+            android.widget.Toast.LENGTH_LONG
         ).show()
+        e.printStackTrace()
     }
 }
