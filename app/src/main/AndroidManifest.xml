@@ -9,7 +9,6 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
     
-    <!-- Para Android 10 no necesitas WRITE_EXTERNAL_STORAGE si usas scoped storage -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
         android:maxSdkVersion="28" />
 
@@ -19,9 +18,8 @@
         android:label="Buzón de voz"
         android:theme="@style/Theme.BuzonVoz"
         android:usesCleartextTraffic="true"
-        tools:targetApi="29">
+        tools:targetApi="34">
 
-        <!-- Actividad Principal -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -33,7 +31,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Servicio de Llamadas con InCallService -->
+        <!-- InCallService para Android 10 -->
         <service
             android:name=".service.IncomingCallService"
             android:enabled="true"
@@ -47,13 +45,12 @@
             </intent-filter>
         </service>
 
-        <!-- Servicio en Foreground SIN tipo específico (compatible con Android 10) -->
+        <!-- Servicio en Foreground SIN tipo específico -->
         <service
             android:name=".service.CallService"
             android:enabled="true"
             android:exported="false" />
 
-        <!-- Broadcast Receiver para detectar llamadas -->
         <receiver
             android:name=".service.CallReceiver"
             android:enabled="true"
