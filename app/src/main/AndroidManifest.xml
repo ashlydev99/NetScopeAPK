@@ -13,6 +13,7 @@
         android:maxSdkVersion="28" />
 
     <application
+        android:name=".NetScopeApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="Buzón de voz"
@@ -20,6 +21,7 @@
         android:usesCleartextTraffic="true"
         tools:targetApi="34">
 
+        <!-- Actividad Principal con soporte para ACTION_DIAL -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -28,6 +30,16 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Filtros para ser reconocido como marcador -->
+            <intent-filter>
+                <action android:name="android.intent.action.DIAL" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.DIAL" />
+                <data android:scheme="tel" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
 
@@ -45,12 +57,13 @@
             </intent-filter>
         </service>
 
-        <!-- Servicio en Foreground SIN tipo específico -->
+        <!-- Servicio en Foreground -->
         <service
             android:name=".service.CallService"
             android:enabled="true"
             android:exported="false" />
 
+        <!-- Broadcast Receiver -->
         <receiver
             android:name=".service.CallReceiver"
             android:enabled="true"
@@ -60,6 +73,7 @@
             </intent-filter>
         </receiver>
 
+        <!-- FileProvider -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
