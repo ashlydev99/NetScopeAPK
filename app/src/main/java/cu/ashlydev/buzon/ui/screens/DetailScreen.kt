@@ -85,7 +85,6 @@ fun DetailScreen(
                 ),
                 actions = {
                     IconButton(onClick = {
-                        // Eliminar y volver
                         MessageRepository.deleteMessage(context, message.id)
                         onBack()
                     }) {
@@ -186,12 +185,14 @@ fun DetailScreen(
                                     audioPlayer.play(message.filePath)
                                     isPlaying = true
                                     // Actualizar posición
-                                    while (audioPlayer.isPlaying()) {
-                                        currentPosition = audioPlayer.getCurrentPosition() / 1000
-                                        delay(500)
+                                    kotlinx.coroutines.GlobalScope.launch {
+                                        while (isPlaying && audioPlayer.isPlaying()) {
+                                            currentPosition = audioPlayer.getCurrentPosition() / 1000
+                                            kotlinx.coroutines.delay(500)
+                                        }
+                                        isPlaying = false
+                                        currentPosition = 0
                                     }
-                                    isPlaying = false
-                                    currentPosition = 0
                                 }
                             },
                             containerColor = ElectricBlue,
@@ -246,12 +247,6 @@ fun DetailScreen(
     }
 }
 
-@Composable
-private fun delay(timeMillis: Long) {
-    // Función auxiliar para delay en Composable
-    // Se usa en el bucle de actualización de posición
-}
-
 private fun formatTime(seconds: Int): String {
     val minutes = seconds / 60
     val secs = seconds % 60
@@ -266,7 +261,6 @@ private fun saveAudioToDevice(context: Context, filePath: String, phoneNumber: S
         val fileName = "mensaje_${phoneNumber}_${System.currentTimeMillis()}.3gp"
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            // Android 10+ usa MediaStore
             val contentValues = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
                 put(MediaStore.MediaColumns.MIME_TYPE, "audio/3gpp")
@@ -280,21 +274,17 @@ private fun saveAudioToDevice(context: Context, filePath: String, phoneNumber: S
             
             uri?.let {
                 context.contentResolver.openOutputStream(it)?.use { outputStream ->
-                    FileOutputStream(outputStream).use { fos ->
-                        sourceFile.inputStream().use { input ->
-                            input.copyTo(fos)
-                        }
+                    sourceFile.inputStream().use { input ->
+                        input.copyTo(outputStream)
                     }
                 }
             }
         } else {
-            // Android 9 y menor
             val musicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSICS)
             val destFile = File(musicDir, fileName)
             sourceFile.copyTo(destFile, overwrite = true)
         }
         
-        // Mostrar mensaje de éxito (en producción usar Toast)
         android.widget.Toast.makeText(
             context,
             "Audio guardado correctamente",

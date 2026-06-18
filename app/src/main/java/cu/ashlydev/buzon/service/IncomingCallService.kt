@@ -24,21 +24,26 @@ class IncomingCallService : InCallService() {
             
             val waitTime = settings.getWaitTime() * 1000L
             android.os.Handler(mainLooper).postDelayed({
-                answerCall(call)
+                answerCall(call, phoneNumber)
             }, waitTime)
         }
     }
     
-    private fun answerCall(call: Call) {
+    private fun answerCall(call: Call, phoneNumber: String) {
         try {
-            // Método oficial para Android 10
-            call.answer(Call.VIDEO_STATE_AUDIO_ONLY)
+            // Método compatible con Android 10
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                // Android 9+ usa InCallService con VIDEO_STATE_AUDIO_ONLY (API 29+)
+                call.answer(0)  // 0 = audio only
+            } else {
+                // Fallback para Android 8
+                val method = call.javaClass.getMethod("answer")
+                method.invoke(call)
+            }
+            
             Log.d("IncomingCallService", "Llamada contestada")
             
             // Iniciar servicio de grabación
-            val details = call.details
-            val phoneNumber = details.handle?.schemeSpecificPart ?: "Desconocido"
-            
             val serviceIntent = android.content.Intent(this, CallService::class.java).apply {
                 putExtra("phone_number", phoneNumber)
             }

@@ -11,7 +11,7 @@ import java.io.FileOutputStream
 
 object FileHelper {
     fun copyAudioToApp(context: Context, uri: Uri, prefix: String): String? {
-        try {
+        return try {
             val contentResolver = context.contentResolver
             val fileName = "$prefix${System.currentTimeMillis()}.mp3"
             val destFile = File(context.filesDir, fileName)
@@ -21,11 +21,10 @@ object FileHelper {
                     input.copyTo(output)
                 }
             }
-            
-            return destFile.absolutePath
+            destFile.absolutePath
         } catch (e: Exception) {
             e.printStackTrace()
-            return null
+            null
         }
     }
     
@@ -50,10 +49,8 @@ object FileHelper {
                 
                 uri?.let {
                     context.contentResolver.openOutputStream(it)?.use { outputStream ->
-                        FileOutputStream(outputStream).use { fos ->
-                            sourceFile.inputStream().use { input ->
-                                input.copyTo(fos)
-                            }
+                        sourceFile.inputStream().use { input ->
+                            input.copyTo(outputStream)
                         }
                     }
                 }

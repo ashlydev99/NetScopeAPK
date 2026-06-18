@@ -2,11 +2,8 @@ package cu.ashlydev.buzon.ui.screens
 
 import android.content.Context
 import android.net.Uri
-import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -21,6 +18,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cu.ashlydev.buzon.data.SettingsRepository
 import cu.ashlydev.buzon.ui.theme.ElectricBlue
+import java.io.File
+import java.io.FileOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,7 +34,6 @@ fun SettingsScreen(
     var greetingPath by remember { mutableStateOf(settings.getGreetingPath()) }
     var farewellPath by remember { mutableStateOf(settings.getFarewellPath()) }
     
-    // Launchers para seleccionar archivos
     val greetingLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
@@ -93,7 +91,6 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Tiempo de espera
             SettingsCard(
                 title = "Tiempo de espera",
                 description = "Tiempo antes de contestar (segundos)"
@@ -134,7 +131,6 @@ fun SettingsScreen(
                 }
             }
             
-            // Tiempo del mensaje
             SettingsCard(
                 title = "Tiempo del mensaje",
                 description = "Segundos para grabar"
@@ -175,7 +171,6 @@ fun SettingsScreen(
                 }
             }
             
-            // Selección de mensaje de saludo
             SettingsCard(
                 title = "Mensaje de saludo",
                 description = "Audio que escucha la otra persona"
@@ -210,7 +205,6 @@ fun SettingsScreen(
                 }
             }
             
-            // Selección de despedida
             SettingsCard(
                 title = "Mensaje de despedida",
                 description = "Audio que se reproduce al finalizar"
@@ -286,7 +280,7 @@ fun SettingsCard(
 }
 
 private fun copyAudioToApp(context: Context, uri: Uri, prefix: String): String? {
-    try {
+    return try {
         val contentResolver = context.contentResolver
         val fileName = "$prefix${System.currentTimeMillis()}.mp3"
         val destFile = File(context.filesDir, fileName)
@@ -296,10 +290,9 @@ private fun copyAudioToApp(context: Context, uri: Uri, prefix: String): String? 
                 input.copyTo(output)
             }
         }
-        
-        return destFile.absolutePath
+        destFile.absolutePath
     } catch (e: Exception) {
         e.printStackTrace()
-        return null
+        null
     }
 }
