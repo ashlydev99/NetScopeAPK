@@ -102,6 +102,7 @@ fun DetailScreen(
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Información del mensaje
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -135,6 +136,7 @@ fun DetailScreen(
             
             Spacer(modifier = Modifier.height(24.dp))
             
+            // Controles de reproducción
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -211,6 +213,7 @@ fun DetailScreen(
             
             Spacer(modifier = Modifier.height(16.dp))
             
+            // Botón de guardar
             Button(
                 onClick = {
                     saveAudioToDevice(context, message.filePath, message.phoneNumber)
@@ -261,6 +264,7 @@ private fun saveAudioToDevice(context: Context, filePath: String, phoneNumber: S
         val fileName = "mensaje_${phoneNumber}_${System.currentTimeMillis()}.3gp"
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // Android 10+ usa MediaStore
             val contentValues = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
                 put(MediaStore.MediaColumns.MIME_TYPE, "audio/3gpp")
@@ -285,7 +289,11 @@ private fun saveAudioToDevice(context: Context, filePath: String, phoneNumber: S
                 ).show()
             }
         } else {
-            val musicDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSICS), "BuzonVoz")
+            // Android 9 y menor
+            val musicDir = File(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSICS),
+                "BuzonVoz"
+            )
             if (!musicDir.exists()) {
                 musicDir.mkdirs()
             }
