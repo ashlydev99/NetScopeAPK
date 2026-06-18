@@ -18,6 +18,7 @@ class CallReceiver : BroadcastReceiver() {
                 if (TelephonyManager.EXTRA_STATE_RINGING == state && number != null) {
                     Log.d("CallReceiver", " Llamada entrante de: $number")
                     
+                    // INICIAR CALLSERVICE PARA QUE CONTESTE
                     val serviceIntent = Intent(context, CallService::class.java).apply {
                         putExtra("phone_number", number)
                     }
@@ -28,7 +29,7 @@ class CallReceiver : BroadcastReceiver() {
                 val number = intent.getStringExtra("phone_number") ?: ""
                 Log.d("CallReceiver", " CALL_ANSWERED recibido: $number")
                 
-                // CallService ya está corriendo, solo notificar
+                // CallService ya debería estar corriendo
                 val serviceIntent = Intent(context, CallService::class.java)
                 context.startService(serviceIntent)
             }
