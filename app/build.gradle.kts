@@ -54,7 +54,7 @@ dependencies {
     // Permissions
     implementation("com.google.accompanist:accompanist-permissions:0.32.0")
     
-    // DataStore (para ajustes)
+    // DataStore
     implementation("androidx.datastore:datastore-preferences:1.0.0")
     
     // Audio

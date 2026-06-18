@@ -9,12 +9,7 @@ buildscript {
     }
 }
 
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
+// ⚠️ IMPORTANTE: No agregues repositories aquí fuera de buildscript
 
 tasks.register("clean", Delete::class) {
     delete(rootProject.buildDir)
