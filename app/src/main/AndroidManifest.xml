@@ -2,13 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Permisos para Android 10 -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
-    
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
         android:maxSdkVersion="28" />
 
@@ -21,7 +19,6 @@
         android:usesCleartextTraffic="true"
         tools:targetApi="34">
 
-        <!-- Actividad Principal con soporte para ACTION_DIAL -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -31,7 +28,6 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Filtros para ser reconocido como marcador -->
             <intent-filter>
                 <action android:name="android.intent.action.DIAL" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -43,7 +39,6 @@
             </intent-filter>
         </activity>
 
-        <!-- InCallService para Android 10 -->
         <service
             android:name=".service.IncomingCallService"
             android:enabled="true"
@@ -57,13 +52,12 @@
             </intent-filter>
         </service>
 
-        <!-- Servicio en Foreground -->
         <service
             android:name=".service.CallService"
             android:enabled="true"
             android:exported="false" />
 
-        <!-- Broadcast Receiver -->
+        <!-- Receiver estático para llamadas -->
         <receiver
             android:name=".service.CallReceiver"
             android:enabled="true"
@@ -73,7 +67,6 @@
             </intent-filter>
         </receiver>
 
-        <!-- FileProvider -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

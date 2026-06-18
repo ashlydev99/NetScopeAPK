@@ -5,7 +5,10 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
+import android.telephony.TelephonyManager
+import android.util.Log
 import androidx.core.app.NotificationCompat
+import cu.ashlydev.buzon.MainActivity
 import cu.ashlydev.buzon.R
 import cu.ashlydev.buzon.data.MessageRepository
 import cu.ashlydev.buzon.data.SettingsRepository
@@ -22,6 +25,7 @@ class CallService : Service() {
     private var isRecording = false
     private var phoneNumber: String = ""
     private var messageTime: Int = 60
+    private var isCallAnswered = false
     
     override fun onCreate() {
         super.onCreate()
@@ -30,79 +34,80 @@ class CallService : Service() {
         audioRecorder = AudioRecorder()
         messageTime = settings.getMessageTime()
         
-        // Crear canal de notificación para Android 8+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                "buzon_voz_channel",
-                "Buzón de voz",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Servicio de buzón de voz"
-            }
-            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.createNotificationChannel(channel)
-        }
+        Log.d("CallService", "Servicio creado")
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.d("CallService", "onStartCommand llamado")
+        
         intent?.let {
             phoneNumber = it.getStringExtra("phone_number") ?: ""
+            Log.d("CallService", "Número recibido: $phoneNumber")
             
-            // Iniciar servicio en foreground
+            // Iniciar foreground
             startForeground(1001, createNotification())
             
-            // Esperar el tiempo configurado y contestar
+            // Contestar llamada después del tiempo configurado
             val waitTime = settings.getWaitTime() * 1000L
             serviceScope.launch {
                 delay(waitTime)
                 answerCall()
-                playGreeting()
             }
         }
         return START_STICKY
     }
     
     private suspend fun answerCall() {
+        Log.d("CallService", "Intentando contestar llamada")
+        
         try {
-            val telephonyManager = getSystemService(Context.TELEPHONY_SERVICE) as android.telephony.TelephonyManager
-            // Método alternativo para Android 10
-            val method = telephonyManager.javaClass.getMethod("answerRingingCall")
-            method.invoke(telephonyManager)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            // Si falla, intentar con InCallService
+            val tm = getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+            
+            // Método para Android 10
             try {
-                val intent = Intent(this, IncomingCallService::class.java)
-                startService(intent)
-            } catch (e2: Exception) {
-                e2.printStackTrace()
+                val method = tm.javaClass.getMethod("answerRingingCall")
+                method.invoke(tm)
+                isCallAnswered = true
+                Log.d("CallService", "✅ Llamada contestada con answerRingingCall")
+                playGreeting()
+            } catch (e: Exception) {
+                Log.e("CallService", "Error con answerRingingCall: ${e.message}")
+                
+                // Fallback: usar InCallService
+                try {
+                    val intent = Intent(this@CallService, IncomingCallService::class.java)
+                    startService(intent)
+                    Log.d("CallService", "Intentando con InCallService")
+                } catch (e2: Exception) {
+                    Log.e("CallService", "Error con InCallService: ${e2.message}")
+                }
             }
+        } catch (e: Exception) {
+            Log.e("CallService", "Error general al contestar: ${e.message}")
         }
     }
     
     private suspend fun playGreeting() {
         try {
             val greetingPath = settings.getGreetingPath()
+            Log.d("CallService", "Reproduciendo saludo: $greetingPath")
             
-            // Reproducir saludo
             if (greetingPath.isNotEmpty() && java.io.File(greetingPath).exists()) {
                 audioPlayer.play(greetingPath)
             } else {
-                // Usar un tono simple generado programáticamente
                 audioPlayer.playDefaultBeep()
             }
             
-            // Esperar a que termine el saludo (máximo 10 segundos)
+            // Esperar a que termine el saludo
             var waitTime = 0
             while (audioPlayer.isPlaying() && waitTime < 10000) {
                 delay(100)
                 waitTime += 100
             }
             
-            // Iniciar grabación
             startRecording()
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("CallService", "Error en playGreeting: ${e.message}")
             startRecording()
         }
     }
@@ -112,16 +117,14 @@ class CallService : Service() {
             val fileName = "mensaje_${phoneNumber}_${System.currentTimeMillis()}.3gp"
             val file = java.io.File(filesDir, fileName)
             
+            Log.d("CallService", "Iniciando grabación: ${file.absolutePath}")
             audioRecorder.startRecording(file.absolutePath)
             isRecording = true
             
-            // Grabar durante el tiempo configurado
             delay(messageTime * 1000L)
-            
-            // Detener grabación y guardar
             stopRecording()
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("CallService", "Error en startRecording: ${e.message}")
             stopRecording()
         }
     }
@@ -142,35 +145,78 @@ class CallService : Service() {
                     timestamp = System.currentTimeMillis()
                 )
                 MessageRepository.saveMessage(this, message)
+                Log.d("CallService", "✅ Mensaje guardado: ${filePath}")
+                
+                // Actualizar notificación
                 updateNotification()
             }
             
-            // Colgar llamada
             hangUpCall()
-            stopForeground(true)
-            stopSelf()
         }
     }
     
     private fun hangUpCall() {
         try {
-            val telephonyManager = getSystemService(Context.TELEPHONY_SERVICE) as android.telephony.TelephonyManager
-            val method = telephonyManager.javaClass.getMethod("endCall")
-            method.invoke(telephonyManager)
+            val tm = getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+            val method = tm.javaClass.getMethod("endCall")
+            method.invoke(tm)
+            Log.d("CallService", "Llamada colgada")
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("CallService", "Error al colgar: ${e.message}")
         }
+        stopForeground(true)
+        stopSelf()
     }
     
     private fun createNotification(): Notification {
+        val channelId = "buzon_voz_channel"
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                channelId,
+                "Buzón de voz",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Servicio de buzón de voz activo"
+            }
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.createNotificationChannel(channel)
+        }
+        
         val messageCount = MessageRepository.getAllMessages(this).size
         
-        return NotificationCompat.Builder(this, "buzon_voz_channel")
+        // Intent para abrir la app
+        val openIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val openPendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            openIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        // Intent para detener el servicio
+        val stopIntent = Intent(this, MainActivity::class.java).apply {
+            putExtra("exit", true)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val stopPendingIntent = PendingIntent.getActivity(
+            this,
+            1,
+            stopIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        return NotificationCompat.Builder(this, channelId)
             .setContentTitle("Buzón de voz")
             .setContentText("Mensajes: $messageCount")
             .setSmallIcon(android.R.drawable.ic_menu_call)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
+            .setContentIntent(openPendingIntent)
+            .addAction(android.R.drawable.ic_menu_edit, "Abrir", openPendingIntent)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Detener", stopPendingIntent)
             .build()
     }
     
@@ -184,6 +230,7 @@ class CallService : Service() {
         serviceScope.cancel()
         audioPlayer.release()
         audioRecorder.release()
+        Log.d("CallService", "Servicio destruido")
     }
     
     override fun onBind(intent: Intent?): IBinder? = null

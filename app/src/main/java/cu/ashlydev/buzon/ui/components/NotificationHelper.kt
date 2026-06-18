@@ -1,4 +1,4 @@
-package cu.ashlydev.buzon.ui.components
+package cu.ashlydev.buzon.utils
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -24,7 +24,7 @@ object NotificationHelper {
                 "Buzón de voz",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Notificaciones del buzón de voz"
+                description = "Servicio de buzón de voz activo"
                 setShowBadge(true)
             }
             manager.createNotificationChannel(channel)
@@ -32,43 +32,36 @@ object NotificationHelper {
         
         val messageCount = MessageRepository.getAllMessages(context).size
         
-        val intent = Intent(context, MainActivity::class.java).apply {
+        val openIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
-        
-        val pendingIntent = PendingIntent.getActivity(
+        val openPendingIntent = PendingIntent.getActivity(
             context,
             0,
-            intent,
+            openIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         
-        // Intent para salir
-        val exitIntent = Intent(context, MainActivity::class.java).apply {
+        val stopIntent = Intent(context, MainActivity::class.java).apply {
             putExtra("exit", true)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
-        
-        val exitPendingIntent = PendingIntent.getActivity(
+        val stopPendingIntent = PendingIntent.getActivity(
             context,
             1,
-            exitIntent,
+            stopIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setContentTitle("Buzón de voz")
-            .setContentText("Mensajes nuevos: $messageCount")
+            .setContentText("Mensajes: $messageCount")
             .setSmallIcon(android.R.drawable.ic_menu_call)
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(false)
             .setOngoing(true)
-            .addAction(
-                android.R.drawable.ic_menu_close_clear_cancel,
-                "Salir",
-                exitPendingIntent
-            )
+            .setContentIntent(openPendingIntent)
+            .addAction(android.R.drawable.ic_menu_edit, "Abrir", openPendingIntent)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Detener", stopPendingIntent)
             .build()
         
         manager.notify(NOTIFICATION_ID, notification)

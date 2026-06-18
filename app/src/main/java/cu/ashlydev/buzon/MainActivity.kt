@@ -22,11 +22,13 @@ import androidx.core.content.ContextCompat
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import cu.ashlydev.buzon.service.CallService
 import cu.ashlydev.buzon.ui.screens.DetailScreen
 import cu.ashlydev.buzon.ui.screens.MainScreen
 import cu.ashlydev.buzon.ui.screens.SettingsScreen
 import cu.ashlydev.buzon.ui.theme.BuzonVozTheme
 import cu.ashlydev.buzon.ui.theme.DarkColorScheme
+import cu.ashlydev.buzon.utils.NotificationHelper
 
 class MainActivity : ComponentActivity() {
     
@@ -35,15 +37,14 @@ class MainActivity : ComponentActivity() {
         private const val TAG = "MainActivity"
     }
     
-    // Registro para solicitar permisos
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val allGranted = permissions.values.all { it }
         if (allGranted) {
             Log.d(TAG, "Todos los permisos concedidos")
-            // Intentar solicitar rol de marcador después de los permisos
             requestDefaultDialerRole()
+            startCallService()
         } else {
             Log.w(TAG, "No se concedieron todos los permisos")
         }
@@ -53,10 +54,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         
-        // Solicitar permisos necesarios
-        requestPermissions()
+        // Manejar cierre de la app desde notificación
+        if (intent?.getBooleanExtra("exit", false) == true) {
+            stopCallService()
+            finish()
+            return
+        }
         
-        // Manejar el intent de marcado (para compatibilidad con ACTION_DIAL)
+        requestPermissions()
         handleDialIntent(intent)
         
         setContent {
@@ -104,16 +109,17 @@ class MainActivity : ComponentActivity() {
     
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        if (intent?.getBooleanExtra("exit", false) == true) {
+            stopCallService()
+            finish()
+            return
+        }
         handleDialIntent(intent)
     }
     
-    /**
-     * Maneja el intent ACTION_DIAL para redirigir al marcador del sistema
-     */
     private fun handleDialIntent(intent: Intent?) {
         if (intent?.action == Intent.ACTION_DIAL) {
             Log.d(TAG, "Recibido ACTION_DIAL: ${intent.data}")
-            // Redirigir a la app de marcado del sistema
             val defaultDialer = getSystemService(TelecomManager::class.java).defaultDialerPackage
             if (defaultDialer != null && defaultDialer != packageName) {
                 val dialIntent = Intent(Intent.ACTION_DIAL, intent.data)
@@ -123,9 +129,6 @@ class MainActivity : ComponentActivity() {
         }
     }
     
-    /**
-     * Solicita los permisos necesarios para la app
-     */
     private fun requestPermissions() {
         val permissions = mutableListOf<String>()
         
@@ -154,63 +157,64 @@ class MainActivity : ComponentActivity() {
         if (permissions.isNotEmpty()) {
             requestPermissionLauncher.launch(permissions.toTypedArray())
         } else {
-            // Si ya tiene todos los permisos, solicitar rol de marcador
             requestDefaultDialerRole()
+            startCallService()
         }
     }
     
-    /**
-     * Método alternativo: Solicita ser la app de teléfono predeterminada
-     * usando RoleManager (Android 10+) o TelecomManager (Android 9-)
-     */
+    private fun startCallService() {
+        Log.d(TAG, "Iniciando CallService")
+        val serviceIntent = Intent(this, CallService::class.java)
+        startService(serviceIntent)
+        
+        // Mostrar notificación persistente
+        NotificationHelper.showNotification(this)
+    }
+    
+    private fun stopCallService() {
+        Log.d(TAG, "Deteniendo CallService")
+        val serviceIntent = Intent(this, CallService::class.java)
+        stopService(serviceIntent)
+        NotificationHelper.cancelNotification(this)
+    }
+    
     private fun requestDefaultDialerRole() {
-        // Verificar que la app pueda contestar llamadas (tiene los permisos necesarios)
         if (!hasRequiredPermissions()) {
-            Log.w(TAG, "No tiene todos los permisos, no se puede solicitar rol de marcador")
+            Log.w(TAG, "No tiene todos los permisos")
             return
         }
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            // Android 10+ usa RoleManager
             try {
                 val roleManager = getSystemService(android.app.role.RoleManager::class.java)
                 if (roleManager.isRoleAvailable(android.app.role.RoleManager.ROLE_DIALER)) {
                     if (!roleManager.isRoleHeld(android.app.role.RoleManager.ROLE_DIALER)) {
-                        Log.d(TAG, "Solicitando rol de marcador con RoleManager")
+                        Log.d(TAG, "Solicitando rol de marcador")
                         val intent = roleManager.createRequestRoleIntent(android.app.role.RoleManager.ROLE_DIALER)
                         startActivityForResult(intent, REQUEST_DIALER_ROLE)
                     } else {
-                        Log.d(TAG, "Ya tiene el rol de marcador")
+                        Log.d(TAG, "Ya es el marcador predeterminado")
                     }
-                } else {
-                    Log.w(TAG, "Rol de marcador no disponible en este dispositivo")
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error al solicitar rol de marcador: ${e.message}")
+                Log.e(TAG, "Error: ${e.message}")
+                openDialerSettings()
             }
         } else {
-            // Android 9 y menor usa TelecomManager
             try {
                 val telecomManager = getSystemService(TelecomManager::class.java)
                 if (packageName != telecomManager.defaultDialerPackage) {
-                    Log.d(TAG, "Solicitando ser marcador predeterminado con TelecomManager")
                     val intent = Intent(TelecomManager.ACTION_CHANGE_DEFAULT_DIALER)
                         .putExtra(TelecomManager.EXTRA_CHANGE_DEFAULT_DIALER_PACKAGE_NAME, packageName)
                     startActivityForResult(intent, REQUEST_DIALER_ROLE)
-                } else {
-                    Log.d(TAG, "Ya es el marcador predeterminado")
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error al solicitar ser marcador predeterminado: ${e.message}")
-                // Fallback: abrir ajustes de marcador
+                Log.e(TAG, "Error: ${e.message}")
                 openDialerSettings()
             }
         }
     }
     
-    /**
-     * Verifica que todos los permisos necesarios estén concedidos
-     */
     private fun hasRequiredPermissions(): Boolean {
         val permissions = listOf(
             Manifest.permission.READ_PHONE_STATE,
@@ -233,9 +237,6 @@ class MainActivity : ComponentActivity() {
         return allGranted
     }
     
-    /**
-     * Fallback: Abre los ajustes de aplicación de marcador predeterminada
-     */
     private fun openDialerSettings() {
         try {
             val intent = Intent(android.provider.Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)
@@ -255,17 +256,13 @@ class MainActivity : ComponentActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQUEST_DIALER_ROLE) {
             if (resultCode == RESULT_OK) {
-                Log.d(TAG, "✅ Rol de marcador concedido correctamente")
-                android.widget.Toast.makeText(
-                    this,
-                    "App configurada como marcador predeterminado",
-                    android.widget.Toast.LENGTH_LONG
-                ).show()
+                Log.d(TAG, "✅ Rol de marcador concedido")
+                startCallService()
             } else {
-                Log.w(TAG, "❌ Rol de marcador no concedido o cancelado")
+                Log.w(TAG, "❌ Rol de marcador no concedido")
                 android.widget.Toast.makeText(
                     this,
-                    "Para que la app funcione, configúrala como marcador predeterminado en Ajustes",
+                    "Configura la app como marcador predeterminado en Ajustes",
                     android.widget.Toast.LENGTH_LONG
                 ).show()
             }
