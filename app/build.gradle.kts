@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "cu.ashlydev.buzon"
-    compileSdk = 34  // ← Cambiado a 34 para compatibilidad con librerías
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "cu.ashlydev.buzon"
-        minSdk = 29  // Android 10
-        targetSdk = 29  // Android 10 - esto NO cambia, sigue siendo Android 10
+        minSdk = 29
+        targetSdk = 29
         versionCode = 1
         versionName = "1.0"
     }
@@ -21,7 +21,7 @@ android {
     }
 
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.4"
+        kotlinCompilerExtensionVersion = "1.5.4"  // Compose compiler
     }
 
     compileOptions {
