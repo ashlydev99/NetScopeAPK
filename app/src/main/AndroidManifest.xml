@@ -73,12 +73,11 @@
             </intent-filter>
         </service>
 
-        <!-- Servicio principal en Foreground -->
+        <!-- Servicio principal en Foreground (SIN foregroundServiceType para Android 10) -->
         <service
             android:name=".service.CallService"
             android:enabled="true"
-            android:exported="false"
-            android:foregroundServiceType="phone" />
+            android:exported="false" />
 
         <!-- ==================== RECEIVERS ==================== -->
         
