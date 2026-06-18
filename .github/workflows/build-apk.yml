@@ -1,7 +1,7 @@
 name: Compilar APK Debug
 
 on:
-  workflow_dispatch:  # Ejecución manual desde GitHub
+  workflow_dispatch:
 
 jobs:
   build:
@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      # 1. Clonar el repositorio
+      # 1. Clonar repositorio
       - name: Checkout código
         uses: actions/checkout@v4
         
@@ -20,26 +20,21 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           
-      # 3. Configurar permisos para gradlew
-      - name: Dar permisos a gradlew
-        run: chmod +x gradlew
-        
-      # 4. Compilar APK Debug
+      # 3. Instalar Gradle
+      - name: Instalar Gradle
+        run: |
+          wget https://services.gradle.org/distributions/gradle-8.2-bin.zip
+          unzip gradle-8.2-bin.zip
+          echo "$(pwd)/gradle-8.2/bin" >> $GITHUB_PATH
+          
+      # 4. Compilar con Gradle directamente
       - name: Compilar APK Debug
-        run: ./gradlew assembleDebug --no-daemon
+        run: gradle assembleDebug --no-daemon
         
-      # 5. Subir APK como artefacto
-      - name: Subir APK como artefacto
+      # 5. Subir artefacto
+      - name: Subir APK
         uses: actions/upload-artifact@v4
         with:
           name: BuzonVoz-Debug
           path: app/build/outputs/apk/debug/*.apk
-          retention-days: 30
-          
-      # 6. (Opcional) Subir también el mapping.txt para debug
-      - name: Subir mapping de debug
-        uses: actions/upload-artifact@v4
-        with:
-          name: BuzonVoz-Mapping
-          path: app/build/outputs/mapping/debug/mapping.txt
           retention-days: 30
