@@ -43,11 +43,15 @@ class IncomingCallService : InCallService() {
         try {
             Log.d("IncomingCallService", "📞 Intentando contestar llamada de: $phoneNumber")
             
-            // Método oficial para Android 10+
+            // Método compatible con Android 10+
+            // En Android 10, VIDEO_STATE_AUDIO_ONLY no está disponible,
+            // usamos 0 que significa "audio only" en todas las versiones
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                call.answer(Call.VIDEO_STATE_AUDIO_ONLY)
-                Log.d("IncomingCallService", "✅ Llamada contestada con InCallService")
+                // Android 9+ - usar 0 para audio only
+                call.answer(0)
+                Log.d("IncomingCallService", "✅ Llamada contestada con InCallService (audio only)")
             } else {
+                // Fallback para Android 8 y menor
                 val method = call.javaClass.getMethod("answer")
                 method.invoke(call)
                 Log.d("IncomingCallService", "✅ Llamada contestada con reflexión")
