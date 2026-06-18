@@ -2,19 +2,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Permisos para Android 10 -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE" />
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
-    
     <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
+    
+    <!-- Para Android 10 no necesitas WRITE_EXTERNAL_STORAGE si usas scoped storage -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
+        android:maxSdkVersion="28" />
 
     <application
         android:allowBackup="true"
@@ -22,7 +19,7 @@
         android:label="Buzón de voz"
         android:theme="@style/Theme.BuzonVoz"
         android:usesCleartextTraffic="true"
-        tools:targetApi="31">
+        tools:targetApi="29">
 
         <!-- Actividad Principal -->
         <activity
@@ -50,19 +47,18 @@
             </intent-filter>
         </service>
 
-        <!-- Servicio en Foreground -->
+        <!-- Servicio en Foreground SIN tipo específico (compatible con Android 10) -->
         <service
             android:name=".service.CallService"
             android:enabled="true"
-            android:exported="false"
-            android:foregroundServiceType="phone" />
+            android:exported="false" />
 
         <!-- Broadcast Receiver para detectar llamadas -->
         <receiver
             android:name=".service.CallReceiver"
             android:enabled="true"
             android:exported="true">
-            <intent-filter>
+            <intent-filter android:priority="1000">
                 <action android:name="android.intent.action.PHONE_STATE" />
             </intent-filter>
         </receiver>

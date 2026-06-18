@@ -13,7 +13,6 @@ import cu.ashlydev.buzon.data.models.VoiceMessage
 import cu.ashlydev.buzon.utils.AudioPlayer
 import cu.ashlydev.buzon.utils.AudioRecorder
 import kotlinx.coroutines.*
-import java.io.File
 
 class CallService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -30,13 +29,24 @@ class CallService : Service() {
         audioPlayer = AudioPlayer()
         audioRecorder = AudioRecorder()
         messageTime = settings.getMessageTime()
+        
+        // Crear canal de notificación para Android 8+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                "buzon_voz_channel",
+                "Buzón de voz",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Servicio de buzón de voz"
+            }
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.createNotificationChannel(channel)
+        }
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         intent?.let {
             phoneNumber = it.getStringExtra("phone_number") ?: ""
-            val greetingPath = settings.getGreetingPath()
-            val farewellPath = settings.getFarewellPath()
             
             // Iniciar servicio en foreground
             startForeground(1001, createNotification())
@@ -46,66 +56,67 @@ class CallService : Service() {
             serviceScope.launch {
                 delay(waitTime)
                 answerCall()
-                playGreeting(greetingPath)
+                playGreeting()
             }
         }
         return START_STICKY
     }
     
-    private suspend fun answerCall() = withContext(Dispatchers.Main) {
+    private suspend fun answerCall() {
         try {
             val telephonyManager = getSystemService(Context.TELEPHONY_SERVICE) as android.telephony.TelephonyManager
+            // Método alternativo para Android 10
             val method = telephonyManager.javaClass.getMethod("answerRingingCall")
             method.invoke(telephonyManager)
         } catch (e: Exception) {
             e.printStackTrace()
+            // Si falla, intentar con InCallService
+            try {
+                val intent = Intent(this, IncomingCallService::class.java)
+                startService(intent)
+            } catch (e2: Exception) {
+                e2.printStackTrace()
+            }
         }
     }
     
-    private suspend fun playGreeting(greetingPath: String) = withContext(Dispatchers.IO) {
+    private suspend fun playGreeting() {
         try {
+            val greetingPath = settings.getGreetingPath()
+            
             // Reproducir saludo
-            if (greetingPath.isNotEmpty() && File(greetingPath).exists()) {
+            if (greetingPath.isNotEmpty() && java.io.File(greetingPath).exists()) {
                 audioPlayer.play(greetingPath)
             } else {
-                // Saludo predeterminado (si existe)
-                val defaultPath = "android.resource://${packageName}/${R.raw.default_greeting}"
-                audioPlayer.play(defaultPath)
+                // Usar un tono simple generado programáticamente
+                audioPlayer.playDefaultBeep()
             }
             
-            // Esperar a que termine el saludo
-            while (audioPlayer.isPlaying()) {
+            // Esperar a que termine el saludo (máximo 10 segundos)
+            var waitTime = 0
+            while (audioPlayer.isPlaying() && waitTime < 10000) {
                 delay(100)
+                waitTime += 100
             }
             
             // Iniciar grabación
             startRecording()
         } catch (e: Exception) {
             e.printStackTrace()
-            // Si falla el saludo, empezar a grabar directamente
             startRecording()
         }
     }
     
-    private suspend fun startRecording() = withContext(Dispatchers.IO) {
+    private suspend fun startRecording() {
         try {
             val fileName = "mensaje_${phoneNumber}_${System.currentTimeMillis()}.3gp"
-            val file = File(filesDir, fileName)
+            val file = java.io.File(filesDir, fileName)
             
             audioRecorder.startRecording(file.absolutePath)
             isRecording = true
             
             // Grabar durante el tiempo configurado
             delay(messageTime * 1000L)
-            
-            // Reproducir despedida
-            val farewellPath = settings.getFarewellPath()
-            if (farewellPath.isNotEmpty() && File(farewellPath).exists()) {
-                audioPlayer.play(farewellPath)
-            }
-            
-            // Esperar a que termine la despedida
-            delay(3000)
             
             // Detener grabación y guardar
             stopRecording()
@@ -120,26 +131,23 @@ class CallService : Service() {
             audioRecorder.stopRecording()
             isRecording = false
             
-            // Guardar mensaje en el repositorio
-            val duration = messageTime
             val filePath = audioRecorder.getFilePath()
             
-            if (filePath != null && File(filePath).exists()) {
+            if (filePath != null && java.io.File(filePath).exists()) {
                 val message = VoiceMessage(
                     id = System.currentTimeMillis(),
                     phoneNumber = phoneNumber,
                     filePath = filePath,
-                    duration = duration,
+                    duration = messageTime,
                     timestamp = System.currentTimeMillis()
                 )
                 MessageRepository.saveMessage(this, message)
-                
-                // Actualizar notificación con el contador
                 updateNotification()
             }
             
             // Colgar llamada
             hangUpCall()
+            stopForeground(true)
             stopSelf()
         }
     }
@@ -155,51 +163,20 @@ class CallService : Service() {
     }
     
     private fun createNotification(): Notification {
-        val channelId = "buzon_voz_channel"
-        
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                "Buzón de voz",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Notificación del servicio de buzón de voz"
-            }
-            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.createNotificationChannel(channel)
-        }
-        
         val messageCount = MessageRepository.getAllMessages(this).size
         
-        return NotificationCompat.Builder(this, channelId)
+        return NotificationCompat.Builder(this, "buzon_voz_channel")
             .setContentTitle("Buzón de voz")
             .setContentText("Mensajes: $messageCount")
             .setSmallIcon(android.R.drawable.ic_menu_call)
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .addAction(
-                android.R.drawable.ic_menu_close_clear_cancel,
-                "Salir",
-                getExitPendingIntent()
-            )
+            .setOngoing(true)
             .build()
     }
     
     private fun updateNotification() {
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.notify(1001, createNotification())
-    }
-    
-    private fun getExitPendingIntent(): PendingIntent {
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            putExtra("exit", true)
-        }
-        return PendingIntent.getActivity(
-            this,
-            0,
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
     }
     
     override fun onDestroy() {

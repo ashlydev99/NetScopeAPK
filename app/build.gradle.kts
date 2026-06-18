@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "cu.ashlydev.buzon"
-    compileSdk = 34
+    compileSdk = 30  // Android 10 es API 29, pero compileSdk 30 es compatible
 
     defaultConfig {
         applicationId = "cu.ashlydev.buzon"
-        minSdk = 29
-        targetSdk = 34
+        minSdk = 29  // Android 10
+        targetSdk = 29  // Android 10
         versionCode = 1
         versionName = "1.0"
     }
@@ -25,19 +25,19 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
 
     kotlinOptions {
-        jvmTarget = "17"
+        jvmTarget = "11"
     }
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
-    implementation("androidx.activity:activity-compose:1.8.2")
+    implementation("androidx.core:core-ktx:1.9.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
+    implementation("androidx.activity:activity-compose:1.7.2")
     implementation("androidx.appcompat:appcompat:1.6.1")
     
     // Compose
@@ -49,7 +49,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     
     // Navigation
-    implementation("androidx.navigation:navigation-compose:2.7.6")
+    implementation("androidx.navigation:navigation-compose:2.7.5")
     
     // Permissions
     implementation("com.google.accompanist:accompanist-permissions:0.32.0")
@@ -58,7 +58,7 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.0.0")
     
     // Audio
-    implementation("androidx.media:media:1.7.0")
+    implementation("androidx.media:media:1.6.0")
     
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
