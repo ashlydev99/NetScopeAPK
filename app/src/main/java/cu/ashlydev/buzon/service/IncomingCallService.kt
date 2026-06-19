@@ -20,7 +20,6 @@ class IncomingCallService : InCallService() {
         super.onCallAdded(call)
         Log.d("IncomingCallService", "📞 onCallAdded: ${call.state}")
         
-        // Solo procesar llamadas entrantes
         if (call.state == Call.STATE_RINGING) {
             currentCall = call
             
@@ -28,11 +27,9 @@ class IncomingCallService : InCallService() {
             val phoneNumber = details.handle?.schemeSpecificPart ?: "Desconocido"
             Log.d("IncomingCallService", "📞 Llamada entrante de: $phoneNumber")
             
-            // Obtener tiempo de espera
             val waitTime = settings.getWaitTime() * 1000L
-            Log.d("IncomingCallService", "⏱️ Esperando $waitTime ms antes de contestar")
+            Log.d("IncomingCallService", "⏱️ Esperando $waitTime ms")
             
-            // Contestar después del tiempo configurado
             android.os.Handler(mainLooper).postDelayed({
                 answerCall(call, phoneNumber)
             }, waitTime)
@@ -41,42 +38,29 @@ class IncomingCallService : InCallService() {
     
     private fun answerCall(call: Call, phoneNumber: String) {
         try {
-            Log.d("IncomingCallService", "📞 Intentando contestar llamada de: $phoneNumber")
+            Log.d("IncomingCallService", "📞 Contestando llamada de: $phoneNumber")
             
-            // Método compatible con Android 10+
-            // En Android 10, VIDEO_STATE_AUDIO_ONLY no está disponible,
-            // usamos 0 que significa "audio only" en todas las versiones
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                // Android 9+ - usar 0 para audio only
-                call.answer(0)
-                Log.d("IncomingCallService", "✅ Llamada contestada con InCallService (audio only)")
-            } else {
-                // Fallback para Android 8 y menor
-                val method = call.javaClass.getMethod("answer")
-                method.invoke(call)
-                Log.d("IncomingCallService", "✅ Llamada contestada con reflexión")
-            }
+            // Método oficial para Android 10+
+            call.answer(0) // 0 = audio only
+            Log.d("IncomingCallService", "✅ Llamada contestada")
             
-            // NOTIFICAR A CALLSERVICE QUE LA LLAMADA FUE CONTESTADA
-            Log.d("IncomingCallService", "📢 Notificando a CallService que la llamada fue contestada")
-            
-            // Opción 1: Usar broadcast
-            val broadcastIntent = android.content.Intent("CALL_ANSWERED").apply {
-                putExtra("phone_number", phoneNumber)
-            }
-            sendBroadcast(broadcastIntent)
-            
-            // Opción 2: Iniciar CallService si no está corriendo
+            // Notificar a CallService
             val serviceIntent = android.content.Intent(this, CallService::class.java).apply {
                 putExtra("phone_number", phoneNumber)
                 putExtra("call_answered", true)
             }
             startService(serviceIntent)
             
-            Log.d("IncomingCallService", "✅ Notificación enviada")
+            // También enviar broadcast por si acaso
+            val broadcastIntent = android.content.Intent("CALL_ANSWERED").apply {
+                putExtra("phone_number", phoneNumber)
+            }
+            sendBroadcast(broadcastIntent)
+            
+            Log.d("IncomingCallService", "✅ Notificación enviada a CallService")
             
         } catch (e: Exception) {
-            Log.e("IncomingCallService", "❌ Error al contestar: ${e.message}")
+            Log.e("IncomingCallService", "❌ Error: ${e.message}")
         }
     }
     

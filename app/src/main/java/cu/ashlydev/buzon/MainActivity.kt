@@ -42,11 +42,11 @@ class MainActivity : ComponentActivity() {
     ) { permissions ->
         val allGranted = permissions.values.all { it }
         if (allGranted) {
-            Log.d(TAG, "Todos los permisos concedidos")
+            Log.d(TAG, "✅ Todos los permisos concedidos")
             requestDefaultDialerRole()
-            startCallService()
+            // NO iniciar CallService aquí - solo se inicia con llamadas
         } else {
-            Log.w(TAG, "No se concedieron todos los permisos")
+            Log.w(TAG, "❌ No se concedieron todos los permisos")
         }
     }
     
@@ -158,16 +158,13 @@ class MainActivity : ComponentActivity() {
             requestPermissionLauncher.launch(permissions.toTypedArray())
         } else {
             requestDefaultDialerRole()
-            startCallService()
         }
     }
     
     private fun startCallService() {
-        Log.d(TAG, "Iniciando CallService")
+        Log.d(TAG, "Iniciando CallService desde notificación")
         val serviceIntent = Intent(this, CallService::class.java)
         startService(serviceIntent)
-        
-        // Mostrar notificación persistente
         NotificationHelper.showNotification(this)
     }
     
@@ -257,7 +254,11 @@ class MainActivity : ComponentActivity() {
         if (requestCode == REQUEST_DIALER_ROLE) {
             if (resultCode == RESULT_OK) {
                 Log.d(TAG, "✅ Rol de marcador concedido")
-                startCallService()
+                android.widget.Toast.makeText(
+                    this,
+                    "App configurada como marcador predeterminado",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
             } else {
                 Log.w(TAG, "❌ Rol de marcador no concedido")
                 android.widget.Toast.makeText(
