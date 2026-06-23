@@ -2,109 +2,46 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- ==================== PERMISOS ==================== -->
+    <!-- WiFi & Network -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     
-    <!-- Permisos esenciales para el funcionamiento -->
-    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-permission android:name="android.permission.READ_CONTACTS" />
-    <uses-permission android:name="android.permission.ANSWER_PHONE_CALLS" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- Bluetooth -->
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" 
+        android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     
-    <!-- Permisos de almacenamiento (solo para Android 9 y menor) -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
-        android:maxSdkVersion="28" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" 
-        android:maxSdkVersion="28" />
+    <!-- Location (required for WiFi scanning on Android < 10) -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    
+    <!-- Nearby WiFi devices (Android 13+) -->
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation" />
 
-    <!-- ==================== APLICACIÓN ==================== -->
-    
     <application
-        android:name=".NetScopeApp"
+        android:name=".HomeApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="Buzón de voz"
-        android:theme="@style/Theme.BuzonVoz"
-        android:usesCleartextTraffic="true"
-        android:requestLegacyExternalStorage="true"
-        tools:targetApi="29">
-
-        <!-- ==================== ACTIVIDAD PRINCIPAL ==================== -->
-        
+        android:label="Home"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Home"
+        android:networkSecurityConfig="@xml/network_security_config"
+        tools:targetApi="34">
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTop"
-            android:theme="@style/Theme.BuzonVoz"
-            android:screenOrientation="portrait">
-            
-            <!-- Lanzador de la app -->
+            android:theme="@style/Theme.Home"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            
-            <!-- Para ser reconocido como marcador (ACTION_DIAL) -->
-            <intent-filter>
-                <action android:name="android.intent.action.DIAL" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-            
-            <intent-filter>
-                <action android:name="android.intent.action.DIAL" />
-                <data android:scheme="tel" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
         </activity>
-
-        <!-- ==================== SERVICIOS ==================== -->
-        
-        <!-- Servicio InCallService para contestar llamadas en Android 10+ -->
-        <service
-            android:name=".service.IncomingCallService"
-            android:enabled="true"
-            android:exported="true"
-            android:permission="android.permission.BIND_INCALL_SERVICE">
-            <meta-data
-                android:name="android.telecom.IN_CALL_SERVICE_UI"
-                android:value="false" />
-            <intent-filter>
-                <action android:name="android.telecom.InCallService" />
-            </intent-filter>
-        </service>
-
-        <!-- Servicio principal en Foreground (SIN foregroundServiceType para Android 10) -->
-        <service
-            android:name=".service.CallService"
-            android:enabled="true"
-            android:exported="false" />
-
-        <!-- ==================== RECEIVERS ==================== -->
-        
-        <!-- Receiver para detectar llamadas entrantes -->
-        <receiver
-            android:name=".service.CallReceiver"
-            android:enabled="true"
-            android:exported="true">
-            <intent-filter android:priority="1000">
-                <action android:name="android.intent.action.PHONE_STATE" />
-                <action android:name="CALL_ANSWERED" />
-            </intent-filter>
-        </receiver>
-
-        <!-- ==================== PROVIDERS ==================== -->
-        
-        <!-- FileProvider para compartir archivos (guardar audios) -->
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.fileprovider"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths" />
-        </provider>
-
     </application>
-
 </manifest>

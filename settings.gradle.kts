@@ -5,15 +5,12 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
-
 dependencyResolutionManagement {
-    // Cambiar a PREFER_PROJECT para permitir repositorios en build.gradle
-    repositoriesMode.set(RepositoriesMode.PREFER_PROJECT)
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
         mavenCentral()
     }
 }
-
-rootProject.name = "BuzonVoz"
+rootProject.name = "Home"
 include(":app")

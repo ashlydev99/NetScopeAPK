@@ -4,6 +4,5 @@
         <item name="android:statusBarColor">@color/dark_background</item>
         <item name="android:navigationBarColor">@color/dark_background</item>
         <item name="android:windowBackground">@color/dark_background</item>
-        <item name="android:windowFullscreen">false</item>
     </style>
 </resources>

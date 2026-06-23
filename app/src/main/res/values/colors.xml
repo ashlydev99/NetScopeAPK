@@ -1,14 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="electric_blue">#00B4FF</color>
-    <color name="electric_blue_dark">#0088CC</color>
-    <color name="electric_blue_light">#66D0FF</color>
-    <color name="electric_blue_transparent">#3300B4FF</color>
-    <color name="background_dark">#0A0A0A</color>
-    <color name="surface_dark">#1A1A1A</color>
-    <color name="surface_dark_variant">#2A2A2A</color>
-    <color name="text_primary">#FFFFFF</color>
-    <color name="text_secondary">#B0B0B0</color>
-    <color name="divider_dark">#333333</color>
-    <color name="red_error">#FF4444</color>
+    <!-- Battle.net Blue -->
+    <color name="battle_net_blue">#FF009AE4</color>
+    <color name="battle_net_blue_dark">#FF0078B3</color>
+    <color name="battle_net_blue_light">#FF33B0F0</color>
+    
+    <!-- Dark Theme -->
+    <color name="dark_background">#FF0F0F1A</color>
+    <color name="dark_surface">#FF1A1A2E</color>
+    <color name="dark_surface_variant">#FF252540</color>
+    <color name="dark_on_background">#FFFFFFFF</color>
+    <color name="dark_on_surface">#FFE0E0E0</color>
+    
+    <!-- Status Colors -->
+    <color name="connected_green">#FF00E676</color>
+    <color name="disconnected_red">#FFFF4444</color>
+    
+    <!-- Others -->
+    <color name="warning_yellow">#FFFFD600</color>
+    <color name="danger_red">#FFFF1744</color>
 </resources>
