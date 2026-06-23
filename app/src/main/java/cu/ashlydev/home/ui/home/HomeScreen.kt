@@ -51,6 +51,7 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
+                .navigationBarsPadding()
                 .padding(16.dp)
         ) {
             // Top bar
@@ -75,7 +76,7 @@ fun HomeScreen(
                 }
             }
             
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
             
             // Welcome text
             Text(
@@ -86,31 +87,33 @@ fun HomeScreen(
                 textAlign = TextAlign.Center
             )
             
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             
-            // Content area
-            if (devices.isEmpty()) {
-                EmptyDeviceCard()
-            } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(devices) { device ->
-                        DeviceCard(
-                            device = device,
-                            onClick = { onDeviceClick(device.id) }
-                        )
+            // Content area with weight to push add button down
+            Box(modifier = Modifier.weight(1f)) {
+                if (devices.isEmpty()) {
+                    EmptyDeviceCard()
+                } else {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(devices) { device ->
+                            DeviceCard(
+                                device = device,
+                                onClick = { onDeviceClick(device.id) }
+                            )
+                        }
                     }
                 }
             }
             
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(16.dp))
             
             // Add device card
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(80.dp)
+                    .height(72.dp)
                     .clickable { onAddDeviceClick() },
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(
@@ -189,22 +192,19 @@ fun DeviceCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Device icon based on type
-            Box(
+            // Device icon
+            Image(
+                painter = painterResource(id = R.drawable.disp),
+                contentDescription = null,
                 modifier = Modifier
                     .size(48.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(
                         if (device.isConnected) ConnectedGreen.copy(alpha = 0.2f)
                         else DisconnectedRed.copy(alpha = 0.2f)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = if (device.connectionType == "WiFi") "" else "",
-                    fontSize = 20.sp
-                )
-            }
+                    )
+                    .padding(8.dp)
+            )
             
             Spacer(modifier = Modifier.width(16.dp))
             

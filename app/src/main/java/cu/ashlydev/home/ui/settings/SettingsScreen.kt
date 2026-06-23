@@ -45,6 +45,7 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
+                .navigationBarsPadding()
                 .padding(16.dp)
         ) {
             // Top bar
@@ -99,17 +100,19 @@ fun SettingsScreen(
                 text = "Copyright AshlyDev 2026",
                 fontSize = 14.sp,
                 color = DarkOnSurface,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 4.dp),
                 textAlign = TextAlign.Center
             )
-            
-            Spacer(modifier = Modifier.height(8.dp))
             
             Text(
                 text = "Versión 1.0",
                 fontSize = 12.sp,
                 color = DarkOnSurface,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
                 textAlign = TextAlign.Center
             )
         }

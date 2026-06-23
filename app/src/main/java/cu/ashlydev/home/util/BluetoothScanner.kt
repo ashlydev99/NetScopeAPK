@@ -3,6 +3,7 @@ package cu.ashlydev.home.util
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -28,7 +29,9 @@ class BluetoothScanner @Inject constructor(
     )
     
     fun scanDevices(): Flow<BluetoothDeviceInfo> = callbackFlow {
-        val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+        val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+        val bluetoothAdapter = bluetoothManager.adapter
+        
         if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled) {
             close()
             return@callbackFlow

@@ -39,8 +39,6 @@ fun ScanDeviceScreen(
     if (showSaveDialog && selectedDevice != null) {
         SaveDeviceDialog(
             device = selectedDevice!!,
-            category = category,
-            type = type,
             onSave = { name ->
                 viewModel.saveDevice(selectedDevice!!, name, category, type)
                 showSaveDialog = false
@@ -181,9 +179,10 @@ fun ScannedDeviceCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = if (device.connectionType == "WiFi") "" else "",
-                fontSize = 24.sp
+            Image(
+                painter = painterResource(id = R.drawable.disp),
+                contentDescription = null,
+                modifier = Modifier.size(40.dp)
             )
             
             Spacer(modifier = Modifier.width(12.dp))

@@ -14,5 +14,7 @@ data class DeviceEntity(
     val ipAddress: String? = null,
     val model: String? = null,
     val connectionType: String, // "WiFi" o "Bluetooth"
-    val isConnected: Boolean = false
+    val isConnected: Boolean = false,
+    val ssid: String? = null,      // Para redes WiFi guardadas
+    val password: String? = null   // Para redes WiFi guardadas (en producción usar encrypted storage)
 )

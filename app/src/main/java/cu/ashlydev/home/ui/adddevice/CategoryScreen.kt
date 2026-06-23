@@ -32,6 +32,7 @@ fun CategoryScreen(
         DeviceCategory(
             name = "RED",
             types = listOf(
+                "WiFi de casa",
                 "Mobile Router",
                 "Home Router",
                 "5G Router",

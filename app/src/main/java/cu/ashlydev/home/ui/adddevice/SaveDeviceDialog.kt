@@ -15,8 +15,6 @@ import cu.ashlydev.home.ui.theme.*
 @Composable
 fun SaveDeviceDialog(
     device: ScannedDevice,
-    category: String,
-    type: String,
     onSave: (String) -> Unit,
     onCancel: () -> Unit
 ) {

@@ -2,9 +2,6 @@ package cu.ashlydev.home.util
 
 import android.content.Context
 import android.net.ConnectivityManager
-import android.net.Network
-import android.net.NetworkCapabilities
-import android.net.wifi.WifiManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -64,15 +61,13 @@ class WifiScanner @Inject constructor(
             val network = connectivityManager.activeNetwork ?: return null
             val linkProperties = connectivityManager.getLinkProperties(network) ?: return null
             
-            // Buscar la puerta de enlace en los LinkProperties
-            linkProperties.routes?.firstOrNull { route ->
-                route.gateway != null && !route.isDefaultRoute
-            }?.gateway?.hostAddress ?: run {
-                // Plan B: tomar el gateway de la ruta por defecto
-                linkProperties.routes?.firstOrNull { route ->
-                    route.isDefaultRoute && route.gateway != null
-                }?.gateway?.hostAddress
+            // Buscar la puerta de enlace en las rutas
+            for (route in linkProperties.routes) {
+                if (route.isDefaultRoute && route.gateway != null) {
+                    return route.gateway.hostAddress
+                }
             }
+            null
         } catch (e: Exception) {
             null
         }

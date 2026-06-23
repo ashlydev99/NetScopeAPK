@@ -35,6 +35,6 @@ jobs:
       - name: Subir APK
         uses: actions/upload-artifact@v4
         with:
-          name: BuzonVoz-Debug
+          name: HomeAPK
           path: app/build/outputs/apk/debug/*.apk
           retention-days: 30
