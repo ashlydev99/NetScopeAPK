@@ -31,6 +31,7 @@ fun AdminWebViewScreen(
     var webView by remember { mutableStateOf<WebView?>(null) }
     var isDesktopMode by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
+    var progress by remember { mutableIntStateOf(0) }
     
     LaunchedEffect(deviceId) {
         viewModel.loadDevice(deviceId)
@@ -62,7 +63,7 @@ fun AdminWebViewScreen(
             ) {
                 IconButton(onClick = onBackClick) {
                     Image(
-                        painter = painterResource(id = R.drawable.back),
+                        painter = painterResource(id = R.drawable.ic_back),
                         contentDescription = "Salir",
                         modifier = Modifier.size(24.dp)
                     )
@@ -79,7 +80,7 @@ fun AdminWebViewScreen(
                 Box {
                     IconButton(onClick = { showMenu = true }) {
                         Image(
-                            painter = painterResource(id = R.drawable.options),
+                            painter = painterResource(id = R.drawable.ic_options),
                             contentDescription = "Opciones",
                             modifier = Modifier.size(24.dp)
                         )
@@ -123,10 +124,9 @@ fun AdminWebViewScreen(
             }
             
             // Progreso de carga
-            var progress by remember { mutableIntStateOf(0) }
             if (progress in 1..99) {
                 LinearProgressIndicator(
-                    progress = { progress / 100f },
+                    progress = { progress.toFloat() / 100f },
                     modifier = Modifier.fillMaxWidth(),
                     color = BattleNetBlue
                 )
@@ -150,6 +150,7 @@ fun AdminWebViewScreen(
                         // Persistencia de cookies
                         CookieManager.getInstance().apply {
                             setAcceptCookie(true)
+                            @Suppress("DEPRECATION")
                             setAcceptThirdPartyCookies(this@apply, true)
                         }
                         

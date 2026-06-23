@@ -61,17 +61,22 @@ class WifiScanner @Inject constructor(
         devices
     }
     
+    @Suppress("DEPRECATION")
     private fun getGatewayIp(wifiInfo: WifiInfo): String? {
-        val dhcp = wifiInfo.dhcpInfo
-        return if (dhcp != null && dhcp.gateway != 0) {
-            val gateway = dhcp.gateway
-            String.format(
-                "%d.%d.%d.%d",
-                gateway and 0xff,
-                gateway shr 8 and 0xff,
-                gateway shr 16 and 0xff,
-                gateway shr 24 and 0xff
-            )
-        } else null
+        return try {
+            val dhcp = wifiInfo.dhcpInfo
+            if (dhcp != null && dhcp.gateway != 0) {
+                val gateway = dhcp.gateway
+                String.format(
+                    "%d.%d.%d.%d",
+                    gateway and 0xff,
+                    gateway shr 8 and 0xff,
+                    gateway shr 16 and 0xff,
+                    gateway shr 24 and 0xff
+                )
+            } else null
+        } catch (e: Exception) {
+            null
+        }
     }
 }
