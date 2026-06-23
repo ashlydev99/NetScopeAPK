@@ -2,9 +2,6 @@ package cu.ashlydev.home.util
 
 import android.content.Context
 import android.net.wifi.WifiManager
-import android.net.Network
-import android.net.ConnectivityManager
-import android.net.LinkProperties
 import android.net.wifi.WifiInfo
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers

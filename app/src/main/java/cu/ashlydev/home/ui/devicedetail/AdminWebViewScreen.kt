@@ -63,7 +63,7 @@ fun AdminWebViewScreen(
             ) {
                 IconButton(onClick = onBackClick) {
                     Image(
-                        painter = painterResource(id = R.drawable.ic_back),
+                        painter = painterResource(id = R.drawable.back),
                         contentDescription = "Salir",
                         modifier = Modifier.size(24.dp)
                     )
@@ -80,7 +80,7 @@ fun AdminWebViewScreen(
                 Box {
                     IconButton(onClick = { showMenu = true }) {
                         Image(
-                            painter = painterResource(id = R.drawable.ic_options),
+                            painter = painterResource(id = R.drawable.options),
                             contentDescription = "Opciones",
                             modifier = Modifier.size(24.dp)
                         )
@@ -126,7 +126,7 @@ fun AdminWebViewScreen(
             // Progreso de carga
             if (progress in 1..99) {
                 LinearProgressIndicator(
-                    progress = { progress.toFloat() / 100f },
+                    progress = progress.toFloat() / 100f,
                     modifier = Modifier.fillMaxWidth(),
                     color = BattleNetBlue
                 )
@@ -148,11 +148,10 @@ fun AdminWebViewScreen(
                         }
                         
                         // Persistencia de cookies
-                        CookieManager.getInstance().apply {
-                            setAcceptCookie(true)
-                            @Suppress("DEPRECATION")
-                            setAcceptThirdPartyCookies(this@apply, true)
-                        }
+                        val cookieManager = CookieManager.getInstance()
+                        cookieManager.setAcceptCookie(true)
+                        @Suppress("DEPRECATION")
+                        cookieManager.setAcceptThirdPartyCookies(this, true)
                         
                         webViewClient = object : WebViewClient() {
                             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {

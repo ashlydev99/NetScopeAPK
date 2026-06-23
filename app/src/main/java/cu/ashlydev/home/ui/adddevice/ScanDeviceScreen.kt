@@ -70,7 +70,7 @@ fun ScanDeviceScreen(
                 IconButton(onClick = onBackClick) {
                     Image(
                         painter = painterResource(id = R.drawable.back),
-                        contentDescription = "Atrás",
+                        contentDescription = "Atr�s",
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -182,7 +182,7 @@ fun ScannedDeviceCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = if (device.connectionType == "WiFi") "📶" else "📱",
+                text = if (device.connectionType == "WiFi") "" else "",
                 fontSize = 24.sp
             )
             
