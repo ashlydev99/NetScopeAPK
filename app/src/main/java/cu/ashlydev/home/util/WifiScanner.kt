@@ -63,8 +63,11 @@ class WifiScanner @Inject constructor(
             
             // Buscar la puerta de enlace en las rutas
             for (route in linkProperties.routes) {
-                if (route.isDefaultRoute && route.gateway != null) {
-                    return route.gateway.hostAddress
+                if (route.isDefaultRoute) {
+                    val gateway = route.gateway
+                    if (gateway != null) {
+                        return gateway.hostAddress
+                    }
                 }
             }
             null
