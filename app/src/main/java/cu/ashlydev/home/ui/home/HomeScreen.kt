@@ -68,7 +68,7 @@ fun HomeScreen(
                 
                 IconButton(onClick = onSettingsClick) {
                     Image(
-                        painter = painterResource(id = R.drawable.settings_icon),
+                        painter = painterResource(id = R.drawable.settings),
                         contentDescription = "Ajustes",
                         modifier = Modifier.size(24.dp)
                     )
@@ -201,7 +201,7 @@ fun DeviceCard(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = if (device.connectionType == "WiFi") "📶" else "📱",
+                    text = if (device.connectionType == "WiFi") "" else "",
                     fontSize = 20.sp
                 )
             }

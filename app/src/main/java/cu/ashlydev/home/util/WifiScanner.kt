@@ -1,8 +1,10 @@
 package cu.ashlydev.home.util
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.net.wifi.WifiManager
-import android.net.wifi.WifiInfo
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -23,11 +25,9 @@ class WifiScanner @Inject constructor(
     
     suspend fun scanNetwork(): List<WifiDevice> = withContext(Dispatchers.IO) {
         val devices = mutableListOf<WifiDevice>()
-        val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
         
         try {
-            val connectionInfo = wifiManager.connectionInfo
-            val gatewayIp = getGatewayIp(connectionInfo)
+            val gatewayIp = getGatewayIp()
             
             if (gatewayIp != null) {
                 val subnet = gatewayIp.substringBeforeLast(".")
@@ -58,20 +58,21 @@ class WifiScanner @Inject constructor(
         devices
     }
     
-    @Suppress("DEPRECATION")
-    private fun getGatewayIp(wifiInfo: WifiInfo): String? {
+    private fun getGatewayIp(): String? {
         return try {
-            val dhcp = wifiInfo.dhcpInfo
-            if (dhcp != null && dhcp.gateway != 0) {
-                val gateway = dhcp.gateway
-                String.format(
-                    "%d.%d.%d.%d",
-                    gateway and 0xff,
-                    gateway shr 8 and 0xff,
-                    gateway shr 16 and 0xff,
-                    gateway shr 24 and 0xff
-                )
-            } else null
+            val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val network = connectivityManager.activeNetwork ?: return null
+            val linkProperties = connectivityManager.getLinkProperties(network) ?: return null
+            
+            // Buscar la puerta de enlace en los LinkProperties
+            linkProperties.routes?.firstOrNull { route ->
+                route.gateway != null && !route.isDefaultRoute
+            }?.gateway?.hostAddress ?: run {
+                // Plan B: tomar el gateway de la ruta por defecto
+                linkProperties.routes?.firstOrNull { route ->
+                    route.isDefaultRoute && route.gateway != null
+                }?.gateway?.hostAddress
+            }
         } catch (e: Exception) {
             null
         }
